@@ -1,8 +1,8 @@
 {
   "name": "salvo",
-  "version": "0.2.0",
+  "version": "0.4.1",
   "description": "A JSON-based scripting and automation platform.",
-  "main": "index.js",
+  "main": "salvo.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -24,6 +24,11 @@
     "json-query": "^2.2.2",
     "node-cmd": "^3.0.0",
     "node-rest-client": "^3.1.0",
+    "nodemailer": "^4.0.1",
+    "replace-in-file": "^2.5.4",
     "xml2js": "^0.4.17"
+  },
+  "bin": {
+    "salvo": "salvo.js"
   }
 }

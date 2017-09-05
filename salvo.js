@@ -1,3 +1,5 @@
+#! /usr/bin/env node
+
 'use strict';
 
 const program = require('commander');
@@ -11,34 +13,66 @@ const util = require('util');
 const xml2js = require('xml2js');
 const xmlBuilder = new xml2js.Builder();
 const xmlParser = new xml2js.Parser();
+const email = require('./capabilities/email/email.js');
+const textEditor = require('./capabilities/file/text.js');
 
 const storedValues = {
   datetimeRun: new Date().valueOf(),
   access_token:'TEMPORARY_TOKEN'
-}
+};
+
+const extractData = ((extractionData, method, extractionModifiers) => {
+  let extractedData = null;
+  if (method === 'string') {
+    extractedData = extractionData;
+  }
+  if (method === 'object') {
+    extractedData = extractionModifiers.source === '$$all$$' ? extractionData : _.get(extractionData, extractionModifiers.source);
+  }
+  if (method === 'array') {
+    extractedData = extractionModifiers.source === '$$all$$' ? extractionData : extractionData[extractionModifiers.source];
+  }
+  if (method === 'regex') {
+    // There is an assumption that the first index will just be the match, and everything else is the capture
+    const capRegex = new RegExp(extractionModifiers.source);
+    const capturedRegex = capRegex.exec(extractionData);
+    extractedData = capturedRegex;
+    if (capturedRegex) {
+      extractedData = extractionModifiers.regexIndex ? capturedRegex[extractionModifiers.regexIndex] : capturedRegex;
+    }
+  }
+  if (extractionModifiers.forceType) {
+    const forceType = extractionModifiers.forceType;
+    if (forceType.toLowerCase() === 'number') {
+      return Number(extractedData);
+    }
+    if (forceType.toLowerCase() === 'string') {
+      return extractedData.toString();
+    }
+    if (forceType.toLowerCase() === 'jsonStringify') {
+      return JSON.stringify(extractedData, 0, 2);
+    }
+  }
+  return extractedData;
+});
 
 const captureData = (action, respSet) => {
-    const data = respSet[0];
+  //console.log(`RESPSET: ${JSON.stringify(respSet, 0, 2)}`);
+  const data = (typeof respSet).toLowerCase() === 'object' ? respSet[0] : respSet;
     for (const captureItem of action.capture) {
       // First, we get the proper data
       let foundData = null;
-      if (captureItem.type === 'string') {
-        foundData = data;
-      }
-      if (captureItem.type === 'object') {
-        foundData = captureItem.source === '$$all$$' ? data : _.get(data, captureItem.source);
-      }
-      if (captureItem.type === 'array') {
-        foundData = captureItem.source === '$$all$$' ? data : data[captureItem.source];
-      }
-      if (captureItem.type === 'regex') {
-        // There is an assumption that the first index will just be the match, and everything else is the capture
-        const capRegex = new RegExp(captureItem.source);
-        foundData = capRegex.exec(data);
-      }
+      foundData = extractData(data, captureItem.type, captureItem.extractionModifiers || { source: captureItem.source });
 
       // Now that the data is set, we save it
       if (captureItem.captureType === 'set') {
+        if (captureItem.values) {
+          // this is used when you want to save multiple values to the same stored object
+          const objectWithProperties = {};
+          for (const itemValue of captureItem.values) {
+            objectWithProperties[itemValue.key] = extractData(data, itemValue.type, itemValue.extractionModifiers);
+          }
+        }
         storedValues[captureItem.target] = foundData;
       }
       if (captureItem.captureType === 'push') {
@@ -51,6 +85,27 @@ const captureData = (action, respSet) => {
     }
   return true;
 };
+
+const updateVar = ((path, data, action) => {
+
+  if (action === 'increment') {
+    if (typeof storedValues[path] === 'string') {
+      storedValues[path] = storedValues[path].toString() + data;
+    } else {
+      storedValues[path] = Number(storedValues[path]) + data;
+    }
+  }
+
+  if (action === 'push') {
+    if (!storedValues[path]) {
+      storedValues[path] = [];
+    }
+    storedValues[path].push(data);
+  }
+  if (action === 'set') {
+    storedValues[path] = data;
+  }
+});
 
 const makeRestCall = callProps => {
   const requestArgs = {
@@ -88,9 +143,9 @@ const substituteValues = object => {
         const storedValue = typeof storedValues[matchWord] === 'object' ? JSON.stringify(storedValues[matchWord]) : storedValues[matchWord];
         const wIndex = object[objProp].indexOf('}>}' + matchWord + '{<{');
         if (wIndex != -1) {
-    //      console.log(`match found in string ${object[objProp]} \r\n for word ${matchWord}`);
+        //  console.log(`match found in string ${object[objProp]} \r\n for word ${matchWord}`);
           object[objProp] = object[objProp].replace('}>}' + matchWord + '{<{', storedValue);
-    //      console.log(`replaced string ${object[objProp]} \r\n for word ${matchWord}`);
+        //  console.log(`replaced string ${object[objProp]} \r\n for word ${matchWord}`);
         }
       }
     }
@@ -99,14 +154,16 @@ const substituteValues = object => {
 
 const runAction = (actions, callback, _runCount) => {
     const runCount = _runCount || 0;
-    const action = actions[runCount];
+    const action = JSON.parse(JSON.stringify(actions[runCount]));
+    const backupAction = JSON.parse(JSON.stringify(action));
     substituteValues(action);
+    console.log(`action res:${JSON.stringify(action)} `);
     return new Promise(preDelay => {
       setTimeout(function () {
-        console.log(`Pre-action delay finished for ${action.name}`);
+      //  console.log(`Pre-action delay finished for ${action.name}`);
         // Execute action depending on type
         preDelay();
-      },action.pre_delay);
+      }, action.pre_delay);
     })
     .then(() => {
       return new Promise(actionPromise => {
@@ -118,13 +175,31 @@ const runAction = (actions, callback, _runCount) => {
               terminalCommand += ' ' + action.values.arguments[zz].key + action.values.arguments[zz].value;
             }
           }
-        return cmd.get(terminalCommand, function(resp) {
-    //      console.log(`NODE res:${(resp)} `);
-          if (action.capture.length > 0) {
-            captureData(action, resp);
-          }
+          console.log(`TERMINAL COMMAND: ${terminalCommand}`);
+          return cmd.get(terminalCommand, (err, resp) => {
+            console.log(`NODE res:${(resp)} `);
+            if (action.capture && action.capture.length > 0) {
+              captureData(action, resp);
+            }
+            return actionPromise();
+          });
+        }
+
+        if (action.type === 'set-var') {
+          updateVar(action.values.target, action.values.data, action.values.action);
           return actionPromise();
-        });
+        }
+
+        if (action.type === 'replace-file-text') {
+          return textEditor.editText(`${process.cwd()}/${action.values.fileLocation}`, action.values.replacements)
+          .then(() => {
+            return actionPromise();
+          });
+        }
+
+        if (action.type === 'send-email') {
+          email.sendEmail(action.values.accountProperties, action.values.emailProperties);
+          return actionPromise();
         }
 
         if (action.type === 'web-call') {
@@ -144,7 +219,7 @@ const runAction = (actions, callback, _runCount) => {
             if (dataOperations.indexOf('jsonstringify') > -1) {
               writeData = JSON.stringify(writeData);
             }
-            return fs.writeFile(action.values.fileLocation, writeData, () => {
+            return fs.writeFile(`${process.cwd()}/${action.values.fileLocation}`, writeData, () => {
               return resolve2();
             });
           })
@@ -157,11 +232,11 @@ const runAction = (actions, callback, _runCount) => {
             const dataOperations = _.map(action.values.dataOperations, op => {
               return op.toLowerCase();
             });
-            if (!fs.existsSync(action.values.fileLocation)) {
-              console.log('Exiting this step early, as the file does not exist');
+            if (!fs.existsSync(`${process.cwd()}/${action.values.fileLocation}`)) {
+              console.log(`Exiting this step early, as the file does not exist at location : \r\n ${process.cwd()}/${action.values.fileLocation}`);
             }
             return new Promise(resolveRead => {
-              return fs.readFile(action.values.fileLocation, 'utf8', (err, readData) => {
+              return fs.readFile(`${process.cwd()}/${action.values.fileLocation}`, 'utf8', (err, readData) => {
                 if (err) {
                   return false;
                 }
@@ -172,9 +247,11 @@ const runAction = (actions, callback, _runCount) => {
                 }
 
                 if (action.values.fileType.toLowerCase() === 'xml') {
-                  return xmlParser.parseString(readData, (err, parsedXML) => {
-                    if (err) {
-                      console.log(`Error reading file:  ${err}`);
+                  const xmlBuilder = new xml2js.Builder();
+                  const xmlParser = new xml2js.Parser(action.values.parseParameters || {});
+                  return xmlParser.parseString(readData, (err2, parsedXML) => {
+                    if (err2) {
+                      console.log(`Error reading file:  ${err2}`);
                       return resolveRead(false);
                     }
                     for (let zz = 0; zz < action.values.data.length; ++zz) {
@@ -185,8 +262,10 @@ const runAction = (actions, callback, _runCount) => {
                   });
                 }
               // Assumes text if no other type is supplied
-                for (let zz = 0; zz < action.values.data.length; ++zz) {
-                  writeData += action.values.data[zz];
+                if (action.values.dataOperations.indexOf('append') >= 0) {
+                  writeData += action.values.data;
+                } else {
+                  writeData = action.values.data;
                 }
                 return resolveRead(writeData);
               });
@@ -195,8 +274,8 @@ const runAction = (actions, callback, _runCount) => {
               if (!writeData) {
                 resolve2();
               }
-              console.log(`DATA TO  WRITE \r\n ${writeData}`);
-              return fs.writeFile(action.values.fileLocation, writeData, () => {
+            //  console.log(`DATA TO  WRITE \r\n ${writeData}`);
+              return fs.writeFile(`${process.cwd()}/${action.values.fileLocation}`, writeData, () => {
                 return resolve2();
               });
             });
@@ -211,6 +290,7 @@ const runAction = (actions, callback, _runCount) => {
         setTimeout(function() {
           console.log(`Post-delay finished for ${action.name}`);
           if (runCount < actions.length - 1) {
+            actions[runCount] = backupAction;
             return runAction(actions, callback, runCount + 1)
           }
           else {
@@ -221,13 +301,19 @@ const runAction = (actions, callback, _runCount) => {
     });
 };
 
-const runOperation = (operation, callback, _runCount) => {
+const runOperation = (operation, callback, _runCount, iterationOptions) => {
   const runCount = _runCount || 0;
-  if (runCount >= operation.iterations) {
+  console.log('runnin op');
+  if (runCount >= iterationOptions.iterations) {
+    // Finishes the operation loop set for the current op
     return setTimeout(function() {
       console.log(`Finished operation delay for ${operation.name}`);
       callback();
-    }, operation.post_delay_op);
+    }, operation.post_delay_op || 0);
+  }
+  if (iterationOptions.type) {
+    // Store the current iteratee as a variable to be used in the subsequent actions
+    storedValues[iterationOptions.iteratee] = iterationOptions.iteratorObjects[runCount];
   }
   setTimeout(function () {
     console.log(`Finished pre-loop delay for ${operation.name}`)
@@ -237,13 +323,13 @@ const runOperation = (operation, callback, _runCount) => {
   .then(() => {
     setTimeout(function() {
       console.log(`Finished post delay(loop) for operation ${operation.name}`);
-      if (runCount < operation.iterations) {
-        return runOperation(operation, callback, runCount + 1);
+      if (runCount < iterationOptions.iterations) {
+        return runOperation(operation, callback, runCount + 1, iterationOptions);
       }
       callback();
-    }, operation.post_delay_loop);
+    }, operation.post_delay_loop || 0);
   });
-  }, operation.pre_delay_loop);
+  }, operation.pre_delay_loop || 0);
 };
 
 program
@@ -256,13 +342,13 @@ if (!program.target) {
   process.exit();
 }
 
-const salvoScript = require(program.target);
+const salvoScript = require(`${process.cwd()}/${program.target}`);
 // Requires format -t './filename'
 console.log(`Beginning salvo ${salvoScript.name}`);
 
 return Promise.map(salvoScript.preloads, preloadFile => {
   // Loads each pre-salvo file.  Format requires './filename'
-  return require(preloadFile);
+  return require(`${process.cwd()}/${preloadFile}`);
 })
 .then(loadedFiles => {
   console.log(`Loaded values: ${JSON.stringify(loadedFiles)}`);
@@ -288,12 +374,32 @@ return Promise.map(salvoScript.preloads, preloadFile => {
       console.log(`Beginning operation ${operation.name}`);
       return new Promise(opResolve => {
         // Make a promise to handle pre-operation timing delay in each object
-        setTimeout(() => {
-          // The following code executes after the pre-operation delay
-          console.log(`Finished pre-operation delay on ${operation.name}`);
-            // Run once for each iteration
-          runOperation(operation, opResolve);
-        }, operation.pre_delay_op);
+        const iterationOptions = { iterations: operation.iterations };
+        if (typeof operation.iterations === 'object') {
+          // Loop over each item in a directory
+          return fs.readdir(process.cwd() + '/' + operation.iterations.directory, (err, items) => {
+            iterationOptions.iterations = items.length;
+            iterationOptions.type = operation.iterations.type;
+            iterationOptions.iteratorObjects = _.map(items, item => {
+              return operation.iterations.directory + '/' + item;
+            });
+            iterationOptions.iteratee = operation.iterations.iteratee;
+            setTimeout(() => {
+              // The following code executes after the pre-operation delay
+              console.log(`Finished pre-operation delay on ${operation.name}`);
+                // Run once for each iteration
+              runOperation(operation, opResolve, 0, iterationOptions);
+            }, operation.pre_delay_op || 0);
+          });
+        } else {
+          // If nothing else is defined, we assume it is a number
+          setTimeout(() => {
+            // The following code executes after the pre-operation delay
+            console.log(`Finished pre-operation delay on ${operation.name}`);
+              // Run once for each iteration
+            runOperation(operation, opResolve, 0, iterationOptions);
+          }, operation.pre_delay_op || 0);
+        }
       });
     })
     .then(() => {
