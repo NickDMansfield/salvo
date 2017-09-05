@@ -1,0 +1,81 @@
+{
+	"name": "Run unit tests and capture results",
+	"preloads": [],
+	"operations": [
+		{
+			"name": "POST test",
+			"description": "You can describe the operation here",
+			"pre_delay_op": 300,
+			"pre_delay_loop": 1000,
+			"post_delay_op": 1000,
+			"post_delay_loop": 1000,
+			"iterations": 1,
+			"actions": [
+				{
+					"name": "Run tests",
+					"description": "Run tests",
+					"pre_delay": 0,
+					"post_delay": 0,
+					"type": "terminal",
+					"values": {
+						"text": "npm run test"
+					},
+					"capture": [
+						{
+							"captureType": "set",
+							"target": "passingTests",
+							"type": "regex",
+							"extractionModifiers": {
+								"source": "\n  (.*) passing",
+								"regexIndex": 1,
+								"forceType": "number"
+							}
+						},
+						{
+							"captureType": "set",
+							"target": "pendingTests",
+							"type": "regex",
+							"extractionModifiers": {
+								"source": "\n  (.*) pending",
+								"regexIndex": 1,
+								"forceType": "number"
+							}
+						},
+						{
+							"captureType": "set",
+							"target": "failingTests",
+							"type": "regex",
+							"extractionModifiers": {
+								"source": "\n  (.*) failing",
+								"regexIndex": 1,
+								"forceType": "number"
+							}
+						}
+					]
+				}
+			]
+		},
+			{
+				"name": "POST test",
+				"description": "You can describe the operation here",
+				"pre_delay_op": 300,
+				"pre_delay_loop": 1000,
+				"post_delay_op": 1000,
+				"post_delay_loop": 1000,
+				"iterations": 1,
+				"actions": [
+					{
+						"name": "Record results",
+						"description": "Updates file",
+						"type": "make-file",
+						"values": {
+							"fileType": "text",
+							"dataOperations": [],
+							"data": "}>}passingTests{<{",
+							"fileLocation": "testResults.txt"
+						}
+					}
+				]
+			}
+	]
+}

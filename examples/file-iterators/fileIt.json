@@ -1,0 +1,27 @@
+{
+  "name": "Loop an op for each file in a directory",
+  "preloads": [],
+  "operations": [
+    {
+      "name": "Loop over files",
+      "iterations": {
+        "type": "for-each-file",
+        "iteratee": "fileName",
+        "directory": "dummyFiles"
+      },
+      "actions": [
+      {
+        "name": "Operation 2 Action 4",
+        "description": "Updates file",
+        "type": "update-file",
+        "values": {
+          "fileType": "text",
+          "dataOperations": [],
+          "data": "}>}fileName{<{",
+          "fileLocation": "}>}fileName{<{"
+        }
+      }
+      ]
+    }
+  ]
+}
