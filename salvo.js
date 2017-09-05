@@ -262,12 +262,10 @@ const runAction = (actions, callback, _runCount) => {
                   });
                 }
               // Assumes text if no other type is supplied
-                for (let zz = 0; zz < action.values.data.length; ++zz) {
-                  if (action.values.dataOperations.indexOf('append') >= 0) {
-                    writeData += action.values.data[zz];
-                  } else {
-                    writeData = action.values.data[zz];
-                  }
+                if (action.values.dataOperations.indexOf('append') >= 0) {
+                  writeData += action.values.data;
+                } else {
+                  writeData = action.values.data;
                 }
                 return resolveRead(writeData);
               });
@@ -303,13 +301,19 @@ const runAction = (actions, callback, _runCount) => {
     });
 };
 
-const runOperation = (operation, callback, _runCount) => {
+const runOperation = (operation, callback, _runCount, iterationOptions) => {
   const runCount = _runCount || 0;
-  if (runCount >= operation.iterations) {
+  console.log('runnin op');
+  if (runCount >= iterationOptions.iterations) {
+    // Finishes the operation loop set for the current op
     return setTimeout(function() {
       console.log(`Finished operation delay for ${operation.name}`);
       callback();
-    }, operation.post_delay_op);
+    }, operation.post_delay_op || 0);
+  }
+  if (iterationOptions.type) {
+    // Store the current iteratee as a variable to be used in the subsequent actions
+    storedValues[iterationOptions.iteratee] = iterationOptions.iteratorObjects[runCount];
   }
   setTimeout(function () {
     console.log(`Finished pre-loop delay for ${operation.name}`)
@@ -319,13 +323,13 @@ const runOperation = (operation, callback, _runCount) => {
   .then(() => {
     setTimeout(function() {
       console.log(`Finished post delay(loop) for operation ${operation.name}`);
-      if (runCount < operation.iterations) {
-        return runOperation(operation, callback, runCount + 1);
+      if (runCount < iterationOptions.iterations) {
+        return runOperation(operation, callback, runCount + 1, iterationOptions);
       }
       callback();
-    }, operation.post_delay_loop);
+    }, operation.post_delay_loop || 0);
   });
-  }, operation.pre_delay_loop);
+  }, operation.pre_delay_loop || 0);
 };
 
 program
@@ -370,12 +374,32 @@ return Promise.map(salvoScript.preloads, preloadFile => {
       console.log(`Beginning operation ${operation.name}`);
       return new Promise(opResolve => {
         // Make a promise to handle pre-operation timing delay in each object
-        setTimeout(() => {
-          // The following code executes after the pre-operation delay
-          console.log(`Finished pre-operation delay on ${operation.name}`);
-            // Run once for each iteration
-          runOperation(operation, opResolve);
-        }, operation.pre_delay_op);
+        const iterationOptions = { iterations: operation.iterations };
+        if (typeof operation.iterations === 'object') {
+          // Loop over each item in a directory
+          return fs.readdir(process.cwd() + '/' + operation.iterations.directory, (err, items) => {
+            iterationOptions.iterations = items.length;
+            iterationOptions.type = operation.iterations.type;
+            iterationOptions.iteratorObjects = _.map(items, item => {
+              return operation.iterations.directory + '/' + item;
+            });
+            iterationOptions.iteratee = operation.iterations.iteratee;
+            setTimeout(() => {
+              // The following code executes after the pre-operation delay
+              console.log(`Finished pre-operation delay on ${operation.name}`);
+                // Run once for each iteration
+              runOperation(operation, opResolve, 0, iterationOptions);
+            }, operation.pre_delay_op || 0);
+          });
+        } else {
+          // If nothing else is defined, we assume it is a number
+          setTimeout(() => {
+            // The following code executes after the pre-operation delay
+            console.log(`Finished pre-operation delay on ${operation.name}`);
+              // Run once for each iteration
+            runOperation(operation, opResolve, 0, iterationOptions);
+          }, operation.pre_delay_op || 0);
+        }
       });
     })
     .then(() => {
