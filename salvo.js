@@ -27,6 +27,10 @@ const extractData = ((extractionData, method, extractionModifiers) => {
     extractedData = extractionData;
   }
   if (method === 'object') {
+    // This allows you to use nested paths via arrays
+    // Example
+    // _.get({some: {'nested.field': 123}}, ['some', 'nested.field']);
+    // => 123
     extractedData = extractionModifiers.source === '$$all$$' ? extractionData : _.get(extractionData, extractionModifiers.source);
   }
   if (method === 'array') {
