@@ -165,11 +165,12 @@ const substituteValues = object => {
       for (let zz = 0; zz < valKeys.length; ++zz) {
         const matchWord = valKeys[zz];
         const storedValue = typeof storedValues[matchWord] === 'object' ? JSON.stringify(storedValues[matchWord]) : storedValues[matchWord];
-        const wIndex = object[objProp].indexOf('}>}' + matchWord + '{<{');
-        if (wIndex != -1) {
+        let wIndex = object[objProp].indexOf('}>}' + matchWord + '{<{');
+        while (wIndex != -1) {
         //  console.log(`match found in string ${object[objProp]} \r\n for word ${matchWord}`);
           object[objProp] = object[objProp].replace('}>}' + matchWord + '{<{', storedValue);
         //  console.log(`replaced string ${object[objProp]} \r\n for word ${matchWord}`);
+          wIndex = object[objProp].indexOf('}>}' + matchWord + '{<{');
         }
       }
     }
