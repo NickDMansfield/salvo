@@ -19,7 +19,8 @@ const request = require('request');
 
 const storedValues = {
   datetimeRun: new Date().valueOf(),
-  access_token:'TEMPORARY_TOKEN'
+  access_token:'TEMPORARY_TOKEN',
+  curDir: process.cwd()
 };
 
 const extractData = ((extractionData, method, extractionModifiers) => {
