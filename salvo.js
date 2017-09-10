@@ -15,6 +15,7 @@ const xmlBuilder = new xml2js.Builder();
 const xmlParser = new xml2js.Parser();
 const email = require('./capabilities/email/email.js');
 const textEditor = require('./capabilities/file/text.js');
+const request = require('request');
 
 const storedValues = {
   datetimeRun: new Date().valueOf(),
@@ -61,32 +62,40 @@ const extractData = ((extractionData, method, extractionModifiers) => {
 });
 
 const captureData = (action, respSet) => {
-  //console.log(`RESPSET: ${JSON.stringify(respSet, 0, 2)}`);
+  // console.log(`RESPSET: ${JSON.stringify(respSet, 0, 2)}`);
   const data = (typeof respSet).toLowerCase() === 'object' ? respSet[0] : respSet;
-    for (const captureItem of action.capture) {
-      // First, we get the proper data
-      let foundData = null;
-      foundData = extractData(data, captureItem.type, captureItem.extractionModifiers || { source: captureItem.source });
+  if (!action.capture) {
+    // Terminate early if there is no capture data
+    return false;
+  }
+  if (!Array.isArray(action.capture) && typeof action.capture === 'object') {
+    // If a single object is passed in, we wrap it in an array for iterator-safe parsing
+    action.capture = [action.capture];
+  }
+  for (const captureItem of action.capture) {
+    // First, we get the proper data
+    let foundData = null;
+    foundData = extractData(data, captureItem.type, captureItem.extractionModifiers || { source: captureItem.source });
 
-      // Now that the data is set, we save it
-      if (captureItem.captureType === 'set') {
-        if (captureItem.values) {
-          // this is used when you want to save multiple values to the same stored object
-          const objectWithProperties = {};
-          for (const itemValue of captureItem.values) {
-            objectWithProperties[itemValue.key] = extractData(data, itemValue.type, itemValue.extractionModifiers);
-          }
+    // Now that the data is set, we save it
+    if (captureItem.captureType === 'set') {
+      if (captureItem.values) {
+        // this is used when you want to save multiple values to the same stored object
+        const objectWithProperties = {};
+        for (const itemValue of captureItem.values) {
+          objectWithProperties[itemValue.key] = extractData(data, itemValue.type, itemValue.extractionModifiers);
         }
-        storedValues[captureItem.target] = foundData;
       }
-      if (captureItem.captureType === 'push') {
-        if (!storedValues[captureItem.target]) {
-          storedValues[captureItem.target] = [];
-        }
-        storedValues[captureItem.target].push(foundData);
-      }
-      console.log(`STORED VALUES \r\n ${util.inspect(storedValues)}`);
+      storedValues[captureItem.target] = foundData;
     }
+    if (captureItem.captureType === 'push') {
+      if (!storedValues[captureItem.target]) {
+        storedValues[captureItem.target] = [];
+      }
+      storedValues[captureItem.target].push(foundData);
+    }
+    console.log(`STORED VALUES \r\n ${util.inspect(storedValues)}`);
+  }
   return true;
 };
 
@@ -120,6 +129,16 @@ const makeRestCall = callProps => {
   };
 
   return new Promise(callFinished => {
+    if (callProps.attachment) {
+      const formData = {};
+      formData[callProps.attachment.fileName] = fs.createReadStream(callProps.attachment.filePath);
+      return request.post({ url: callProps.target, formData, headers: callProps.headers }, (err, httpResult) => {
+        if (err) {
+          console.log(`Error sending file: ${err}`);
+        }
+        return callFinished(httpResult);
+      });
+    }
     if (callProps.method.toLowerCase() === 'get') {
       return rClient.get(callProps.target, requestArgs, (data, response) => {
     //    console.log(`CALL DATA get= ${data}`);
