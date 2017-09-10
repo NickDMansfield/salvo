@@ -137,7 +137,11 @@ const makeRestCall = callProps => {
         if (err) {
           console.log(`Error sending file: ${err}`);
         }
-        return callFinished(httpResult);
+        // -The httpResult comes in the format { statusCode: 200, body: "bodyData" }
+        // -Body comes back as a string, so we parse it before passing it on, to maintain
+        //    consistency with other call's behavior
+          console.log(`upload result: ${httpResult.body}`);
+        return callFinished([JSON.parse(httpResult.body)]);
       });
     }
     if (callProps.method.toLowerCase() === 'get') {
