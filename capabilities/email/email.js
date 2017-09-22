@@ -1,36 +1,39 @@
 'use strict';
 const nodeMailer = require('nodemailer');
-const Promise = require('bluebird');
+const _ = require('lodash');
 
 // NOTES
 // Presently it only supports gmail
 
-let mailTransporter = null;
-
 const login = ((service, user, pass) => {
-  console.log('logging in');
-  mailTransporter = nodeMailer.createTransport({
+// Create a SMTP transport object
+  const transport = nodeMailer.createTransport({
     service,
     auth: {
       user,
       pass
     }
   });
+  return transport;
 });
 
-const sendEmail = ((accountProperties, emailProperties) => {
-  console.log('sending mail');
-  login(accountProperties.service, accountProperties.user, accountProperties.password);
-  const options = emailProperties;
-  if (Array.isArray(options.to)) {
-    options.to = options.to.join(', ');
+const sendEmail = ((accountProperties, emailProperties, callback) => {
+  const mailTransporter = login(accountProperties.service, accountProperties.user, accountProperties.pass);
+  const email = emailProperties;
+  if (Array.isArray(email.to)) {
+    email.to = email.to.join(', ');
   }
-  console.log(mailTransporter);
-  return mailTransporter.sendMail(options, function(error, info){
+  // Handle attachment conversion
+  if (email.attachments && Array.isArray(email.attachments)) {
+    email.attachments = _.map(email.attachments, attachment => {
+      return { path: process.cwd() + '/' + attachment };
+    });
+  }
+  return mailTransporter.sendMail(email, (error, info) => {
     if (error) {
       console.log(error);
     } else {
-      console.log('Email sent: ' + info.response);
+      return callback();
     }
   });
 });

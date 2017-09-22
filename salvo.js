@@ -227,8 +227,7 @@ const runAction = (actions, callback, _runCount) => {
         }
 
         if (action.type === 'send-email') {
-          email.sendEmail(action.values.accountProperties, action.values.emailProperties);
-          return actionPromise();
+          return email.sendEmail(action.values.accountProperties, action.values.emailProperties, actionPromise)
         }
 
         if (action.type === 'web-call') {
@@ -374,15 +373,26 @@ if (!program.target) {
 const salvoScript = require(`${process.cwd()}/${program.target}`);
 // Requires format -t './filename'
 console.log(`Beginning salvo ${salvoScript.name}`);
-
-return Promise.map(salvoScript.preloads, preloadFile => {
-  // Loads each pre-salvo file.  Format requires './filename'
-  return require(`${process.cwd()}/${preloadFile}`);
+return new Promise(preloadsLoaded => {
+  if (!salvoScript.preloads) {
+    return preloadsLoaded();
+  }
+  return Promise.map(salvoScript.preloads, preloadFile => {
+    // Loads each pre-salvo file.  Format requires './filename'
+    return require(`${process.cwd()}/${preloadFile}`);
+  })
+  .then(() => {
+    return preloadsLoaded();
+  });
 })
-.then(loadedFiles => {
+.then(_loadedFiles => {
+  let loadedFiles = _loadedFiles;
   console.log(`Loaded values: ${JSON.stringify(loadedFiles)}`);
   return new Promise(resolve => {
-
+    if (!loadedFiles) {
+      // To avoid loop errors, we set it to an empty array
+      loadedFiles = [];
+    }
     for (const loadedData of loadedFiles) {
       let dataObject = loadedData;
       if (loadedData.hasOwnProperty('default')) {
