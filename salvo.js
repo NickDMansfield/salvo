@@ -11,11 +11,10 @@ const Client = require('node-rest-client').Client;
 const rClient = new Client();
 const util = require('util');
 const xml2js = require('xml2js');
-const xmlBuilder = new xml2js.Builder();
-const xmlParser = new xml2js.Parser();
 const email = require('./capabilities/email/email.js');
 const textEditor = require('./capabilities/file/text.js');
 const request = require('request');
+const Time = require('time-js')
 
 const storedValues = {
   datetimeRun: new Date().valueOf(),
@@ -332,6 +331,10 @@ const runAction = (actions, callback, _runCount) => {
 const runOperation = (operation, callback, _runCount, iterationOptions) => {
   const runCount = _runCount || 0;
   console.log('runnin op');
+  const nowTime = Number(new Date())
+  const runTime = new Time(operation.run_at).isValid() ? Number(new Time(operation.run_at).nextDate()) : new Date(operation.run_at);
+  const timeout = runTime - nowTime;
+
   if (runCount >= iterationOptions.iterations) {
     // Finishes the operation loop set for the current op
     return setTimeout(function() {
@@ -357,7 +360,7 @@ const runOperation = (operation, callback, _runCount, iterationOptions) => {
       callback();
     }, operation.post_delay_loop || 0);
   });
-  }, operation.pre_delay_loop || 0);
+  }, operation.pre_delay_loop || timeout || 0);
 };
 
 program
@@ -375,14 +378,14 @@ const salvoScript = require(`${process.cwd()}/${program.target}`);
 console.log(`Beginning salvo ${salvoScript.name}`);
 return new Promise(preloadsLoaded => {
   if (!salvoScript.preloads) {
-    return preloadsLoaded();
+    return preloadsLoaded([]);
   }
   return Promise.map(salvoScript.preloads, preloadFile => {
     // Loads each pre-salvo file.  Format requires './filename'
     return require(`${process.cwd()}/${preloadFile}`);
   })
-  .then(() => {
-    return preloadsLoaded();
+  .then(preloads => {
+    return preloadsLoaded(preloads);
   });
 })
 .then(_loadedFiles => {
