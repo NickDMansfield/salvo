@@ -159,6 +159,28 @@ const makeRestCall = callProps => {
   });
 };
 
+const areConditionsMet = conditionsArr => {
+  for (const condition of conditionsArr) {
+    if (condition.type) {
+      if (condition.type === 'does-var-equal') {
+        if (storedValues[condition.varName] !== condition.checkValue) {
+          return false;
+        }
+      }
+      if (condition.type === 'does-var-not-equal') {
+        if (storedValues[condition.varName] === condition.checkValue) {
+          return false;
+        }
+      }
+    } else if (eval(condition) !== true) {
+      // Note that this can be exploited if raw text is used in a conditional and
+      // entered by a malicious outsider
+      return false;
+    }
+  }
+  return true;
+};
+
 const substituteValues = object => {
   for (let objProp in object) {
     if ((typeof object[objProp]).toLowerCase() === 'object') {
@@ -191,10 +213,16 @@ const runAction = (actions, callback, _runCount) => {
       //  console.log(`Pre-action delay finished for ${action.name}`);
         // Execute action depending on type
         preDelay();
-      }, action.pre_delay);
+      }, action.pre_delay || 0);
     })
     .then(() => {
       return new Promise(actionPromise => {
+        if (action.conditions) {
+          if (!areConditionsMet(action.conditions)) {
+            // Terminate early if conditions are unmet
+            return actionPromise();
+          }
+        }
         if (action.type === 'terminal') {
           let terminalCommand = action.values.text;
           if (action.values.arguments && action.values.arguments.length > 0) {
@@ -215,6 +243,11 @@ const runAction = (actions, callback, _runCount) => {
 
         if (action.type === 'set-var') {
           updateVar(action.values.target, action.values.data, action.values.action);
+          return actionPromise();
+        }
+
+        if (action.type === 'print-statement') {
+          console.log(action.values.text);
           return actionPromise();
         }
 
@@ -315,7 +348,7 @@ const runAction = (actions, callback, _runCount) => {
       })
       .then(() => {
         setTimeout(function() {
-          console.log(`Post-delay finished for ${action.name}`);
+        //  console.log(`Post-delay finished for ${action.name}`);
           if (runCount < actions.length - 1) {
             actions[runCount] = backupAction;
             return runAction(actions, callback, runCount + 1)
@@ -323,22 +356,26 @@ const runAction = (actions, callback, _runCount) => {
           else {
             return callback();
           }
-        }, action.post_delay);
+        }, action.post_delay || 0);
       });
     });
 };
 
 const runOperation = (operation, callback, _runCount, iterationOptions) => {
   const runCount = _runCount || 0;
-  console.log('runnin op');
-  const nowTime = Number(new Date())
-  const runTime = new Time(operation.run_at).isValid() ? Number(new Time(operation.run_at).nextDate()) : new Date(operation.run_at);
-  const timeout = runTime - nowTime;
+  let timeout = 0;
+  if (operation.run_at) {
+    const nowTime = Number(new Date());
+    const runTime = new Time(operation.run_at).isValid() ? Number(new Time(operation.run_at).nextDate()) : new Date(operation.run_at);
+    if (runTime > nowTime) {
+      timeout = (runTime - nowTime);
+    }
+  }
 
   if (runCount >= iterationOptions.iterations) {
     // Finishes the operation loop set for the current op
     return setTimeout(function() {
-      console.log(`Finished operation delay for ${operation.name}`);
+    //  console.log(`Finished operation delay for ${operation.name}`);
       callback();
     }, operation.post_delay_op || 0);
   }
@@ -347,13 +384,13 @@ const runOperation = (operation, callback, _runCount, iterationOptions) => {
     storedValues[iterationOptions.iteratee] = iterationOptions.iteratorObjects[runCount];
   }
   setTimeout(function () {
-    console.log(`Finished pre-loop delay for ${operation.name}`)
+    // console.log(`Finished pre-loop delay for ${operation.name}`)
   return new Promise(iterationFinished => {
     runAction(operation.actions, iterationFinished, 0);
   })
   .then(() => {
     setTimeout(function() {
-      console.log(`Finished post delay(loop) for operation ${operation.name}`);
+    //  console.log(`Finished post delay(loop) for operation ${operation.name}`);
       if (runCount < iterationOptions.iterations) {
         return runOperation(operation, callback, runCount + 1, iterationOptions);
       }
@@ -428,7 +465,7 @@ return new Promise(preloadsLoaded => {
             iterationOptions.iteratee = operation.iterations.iteratee;
             setTimeout(() => {
               // The following code executes after the pre-operation delay
-              console.log(`Finished pre-operation delay on ${operation.name}`);
+          //    console.log(`Finished pre-operation delay on ${operation.name}`);
                 // Run once for each iteration
               runOperation(operation, opResolve, 0, iterationOptions);
             }, operation.pre_delay_op || 0);
@@ -437,7 +474,7 @@ return new Promise(preloadsLoaded => {
           // If nothing else is defined, we assume it is a number
           setTimeout(() => {
             // The following code executes after the pre-operation delay
-            console.log(`Finished pre-operation delay on ${operation.name}`);
+          //  console.log(`Finished pre-operation delay on ${operation.name}`);
               // Run once for each iteration
             runOperation(operation, opResolve, 0, iterationOptions);
           }, operation.pre_delay_op || 0);
