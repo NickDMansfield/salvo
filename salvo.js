@@ -11,14 +11,15 @@ const Client = require('node-rest-client').Client;
 const rClient = new Client();
 const util = require('util');
 const xml2js = require('xml2js');
-const xmlBuilder = new xml2js.Builder();
-const xmlParser = new xml2js.Parser();
 const email = require('./capabilities/email/email.js');
 const textEditor = require('./capabilities/file/text.js');
+const request = require('request');
+const Time = require('time-js')
 
 const storedValues = {
   datetimeRun: new Date().valueOf(),
-  access_token:'TEMPORARY_TOKEN'
+  access_token:'TEMPORARY_TOKEN',
+  curDir: process.cwd()
 };
 
 const extractData = ((extractionData, method, extractionModifiers) => {
@@ -27,6 +28,10 @@ const extractData = ((extractionData, method, extractionModifiers) => {
     extractedData = extractionData;
   }
   if (method === 'object') {
+    // This allows you to use nested paths via arrays
+    // Example
+    // _.get({some: {'nested.field': 123}}, ['some', 'nested.field']);
+    // => 123
     extractedData = extractionModifiers.source === '$$all$$' ? extractionData : _.get(extractionData, extractionModifiers.source);
   }
   if (method === 'array') {
@@ -57,32 +62,40 @@ const extractData = ((extractionData, method, extractionModifiers) => {
 });
 
 const captureData = (action, respSet) => {
-  //console.log(`RESPSET: ${JSON.stringify(respSet, 0, 2)}`);
+  // console.log(`RESPSET: ${JSON.stringify(respSet, 0, 2)}`);
   const data = (typeof respSet).toLowerCase() === 'object' ? respSet[0] : respSet;
-    for (const captureItem of action.capture) {
-      // First, we get the proper data
-      let foundData = null;
-      foundData = extractData(data, captureItem.type, captureItem.extractionModifiers || { source: captureItem.source });
+  if (!action.capture) {
+    // Terminate early if there is no capture data
+    return false;
+  }
+  if (!Array.isArray(action.capture) && typeof action.capture === 'object') {
+    // If a single object is passed in, we wrap it in an array for iterator-safe parsing
+    action.capture = [action.capture];
+  }
+  for (const captureItem of action.capture) {
+    // First, we get the proper data
+    let foundData = null;
+    foundData = extractData(data, captureItem.type, captureItem.extractionModifiers || { source: captureItem.source });
 
-      // Now that the data is set, we save it
-      if (captureItem.captureType === 'set') {
-        if (captureItem.values) {
-          // this is used when you want to save multiple values to the same stored object
-          const objectWithProperties = {};
-          for (const itemValue of captureItem.values) {
-            objectWithProperties[itemValue.key] = extractData(data, itemValue.type, itemValue.extractionModifiers);
-          }
+    // Now that the data is set, we save it
+    if (captureItem.captureType === 'set') {
+      if (captureItem.values) {
+        // this is used when you want to save multiple values to the same stored object
+        const objectWithProperties = {};
+        for (const itemValue of captureItem.values) {
+          objectWithProperties[itemValue.key] = extractData(data, itemValue.type, itemValue.extractionModifiers);
         }
-        storedValues[captureItem.target] = foundData;
       }
-      if (captureItem.captureType === 'push') {
-        if (!storedValues[captureItem.target]) {
-          storedValues[captureItem.target] = [];
-        }
-        storedValues[captureItem.target].push(foundData);
-      }
-      console.log(`STORED VALUES \r\n ${util.inspect(storedValues)}`);
+      storedValues[captureItem.target] = foundData;
     }
+    if (captureItem.captureType === 'push') {
+      if (!storedValues[captureItem.target]) {
+        storedValues[captureItem.target] = [];
+      }
+      storedValues[captureItem.target].push(foundData);
+    }
+    console.log(`STORED VALUES \r\n ${util.inspect(storedValues)}`);
+  }
   return true;
 };
 
@@ -116,6 +129,20 @@ const makeRestCall = callProps => {
   };
 
   return new Promise(callFinished => {
+    if (callProps.attachment) {
+      const formData = {};
+      formData[callProps.attachment.fileName] = fs.createReadStream(callProps.attachment.filePath);
+      return request.post({ url: callProps.target, formData, headers: callProps.headers }, (err, httpResult) => {
+        if (err) {
+          console.log(`Error sending file: ${err}`);
+        }
+        // -The httpResult comes in the format { statusCode: 200, body: "bodyData" }
+        // -Body comes back as a string, so we parse it before passing it on, to maintain
+        //    consistency with other call's behavior
+          console.log(`upload result: ${httpResult.body}`);
+        return callFinished([JSON.parse(httpResult.body)]);
+      });
+    }
     if (callProps.method.toLowerCase() === 'get') {
       return rClient.get(callProps.target, requestArgs, (data, response) => {
     //    console.log(`CALL DATA get= ${data}`);
@@ -141,11 +168,12 @@ const substituteValues = object => {
       for (let zz = 0; zz < valKeys.length; ++zz) {
         const matchWord = valKeys[zz];
         const storedValue = typeof storedValues[matchWord] === 'object' ? JSON.stringify(storedValues[matchWord]) : storedValues[matchWord];
-        const wIndex = object[objProp].indexOf('}>}' + matchWord + '{<{');
-        if (wIndex != -1) {
+        let wIndex = object[objProp].indexOf('}>}' + matchWord + '{<{');
+        while (wIndex != -1) {
         //  console.log(`match found in string ${object[objProp]} \r\n for word ${matchWord}`);
           object[objProp] = object[objProp].replace('}>}' + matchWord + '{<{', storedValue);
         //  console.log(`replaced string ${object[objProp]} \r\n for word ${matchWord}`);
+          wIndex = object[objProp].indexOf('}>}' + matchWord + '{<{');
         }
       }
     }
@@ -198,8 +226,7 @@ const runAction = (actions, callback, _runCount) => {
         }
 
         if (action.type === 'send-email') {
-          email.sendEmail(action.values.accountProperties, action.values.emailProperties);
-          return actionPromise();
+          return email.sendEmail(action.values.accountProperties, action.values.emailProperties, actionPromise)
         }
 
         if (action.type === 'web-call') {
@@ -304,6 +331,10 @@ const runAction = (actions, callback, _runCount) => {
 const runOperation = (operation, callback, _runCount, iterationOptions) => {
   const runCount = _runCount || 0;
   console.log('runnin op');
+  const nowTime = Number(new Date())
+  const runTime = new Time(operation.run_at).isValid() ? Number(new Time(operation.run_at).nextDate()) : new Date(operation.run_at);
+  const timeout = runTime - nowTime;
+
   if (runCount >= iterationOptions.iterations) {
     // Finishes the operation loop set for the current op
     return setTimeout(function() {
@@ -329,7 +360,7 @@ const runOperation = (operation, callback, _runCount, iterationOptions) => {
       callback();
     }, operation.post_delay_loop || 0);
   });
-  }, operation.pre_delay_loop || 0);
+  }, operation.pre_delay_loop || timeout || 0);
 };
 
 program
@@ -345,15 +376,26 @@ if (!program.target) {
 const salvoScript = require(`${process.cwd()}/${program.target}`);
 // Requires format -t './filename'
 console.log(`Beginning salvo ${salvoScript.name}`);
-
-return Promise.map(salvoScript.preloads, preloadFile => {
-  // Loads each pre-salvo file.  Format requires './filename'
-  return require(`${process.cwd()}/${preloadFile}`);
+return new Promise(preloadsLoaded => {
+  if (!salvoScript.preloads) {
+    return preloadsLoaded([]);
+  }
+  return Promise.map(salvoScript.preloads, preloadFile => {
+    // Loads each pre-salvo file.  Format requires './filename'
+    return require(`${process.cwd()}/${preloadFile}`);
+  })
+  .then(preloads => {
+    return preloadsLoaded(preloads);
+  });
 })
-.then(loadedFiles => {
+.then(_loadedFiles => {
+  let loadedFiles = _loadedFiles;
   console.log(`Loaded values: ${JSON.stringify(loadedFiles)}`);
   return new Promise(resolve => {
-
+    if (!loadedFiles) {
+      // To avoid loop errors, we set it to an empty array
+      loadedFiles = [];
+    }
     for (const loadedData of loadedFiles) {
       let dataObject = loadedData;
       if (loadedData.hasOwnProperty('default')) {
