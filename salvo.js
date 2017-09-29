@@ -321,8 +321,17 @@ const runAction = (actions, callback, _runCount) => {
                     return resolveRead(xmlBuilder.buildObject(parsedXML));
                   });
                 }
+
+                if (action.values.fileType.toLowerCase() === 'json') {
+                  const readDataObj = JSON.parse(readData);
+                  for (let zz = 0; zz < action.values.data.length; ++zz) {
+                    const dataToInsert = action.values.data[zz];
+                    _.set(readDataObj, dataToInsert.path, dataToInsert.value);
+                  }
+                  return resolveRead(JSON.stringify(readDataObj, 0, 2));
+                }
               // Assumes text if no other type is supplied
-                if (action.values.dataOperations.indexOf('append') >= 0) {
+                if (action.values.dataOperations && action.values.dataOperations.indexOf('append') >= 0) {
                   writeData += action.values.data;
                 } else {
                   writeData = action.values.data;
@@ -334,7 +343,7 @@ const runAction = (actions, callback, _runCount) => {
               if (!writeData) {
                 resolve2();
               }
-            //  console.log(`DATA TO  WRITE \r\n ${writeData}`);
+              console.log(`DATA TO  WRITE \r\n ${writeData}`);
               return fs.writeFile(`${process.cwd()}/${action.values.fileLocation}`, writeData, () => {
                 return resolve2();
               });
