@@ -1,0 +1,25 @@
+{
+  "name": "Edits a JSON file",
+  "operations": [
+    {
+      "name": "Edit JSON file",
+      "iterations": 1,
+      "actions": [
+				{
+					"name": "Edits file",
+					"type": "update-file",
+					"values": {
+            "fileLocation": "editMe.json",
+            "fileType": "json",
+            "data": [
+              {
+                "path": "objProp.val2",
+                "value": "}>}datetimeRun{<{"
+              }
+            ]
+					}
+				}
+      ]
+    }
+  ]
+}
