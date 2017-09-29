@@ -1,0 +1,41 @@
+{
+  "name": "Front-End Build Deployment",
+  "operations": [
+    {
+      "name": "Front-End Build",
+      "description": "builds front-end",
+			"iterations": 1,
+      "actions": [
+        {
+          "name": "grab ip address",
+          "description": "running ifconfig to get ip address",
+          "type": "terminal",
+          "values": {
+            "text": "ifconfig"
+            },
+            "capture": [
+            {
+              "captureType": "set",
+              "extractionModifiers": {
+                "source": "inet (.*?) netmask",
+                "regexIndex": 1
+              },
+              "target": "ipAddress",
+              "type": "regex"
+            }
+          ]
+        },
+        {
+          "name": "update ip address",
+          "description": "Placing ip adress in local.js",
+          "pre_delay": 0,
+					"post_delay": 0,
+          "type": "print-statement",
+					"values": {
+          "text": "}>}ipAddress{<{"
+					}
+        }
+      ]
+    }
+  ]
+}
