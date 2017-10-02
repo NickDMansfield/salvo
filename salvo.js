@@ -15,6 +15,7 @@ const email = require('./capabilities/email/email.js');
 const textEditor = require('./capabilities/file/text.js');
 const request = require('request');
 const Time = require('time-js')
+const encode = require('./capabilities/utils/encoding.js');
 
 const storedValues = {
   datetimeRun: new Date().valueOf(),
@@ -190,12 +191,29 @@ const substituteValues = object => {
       for (let zz = 0; zz < valKeys.length; ++zz) {
         const matchWord = valKeys[zz];
         const storedValue = typeof storedValues[matchWord] === 'object' ? JSON.stringify(storedValues[matchWord]) : storedValues[matchWord];
+        // Handle replacements of text with variables
         let wIndex = object[objProp].indexOf('}>}' + matchWord + '{<{');
         while (wIndex != -1) {
         //  console.log(`match found in string ${object[objProp]} \r\n for word ${matchWord}`);
-          object[objProp] = object[objProp].replace('}>}' + matchWord + '{<{', storedValue);
+          object[objProp] = object[objProp].split('}>}' + matchWord + '{<{').join(storedValue);
         //  console.log(`replaced string ${object[objProp]} \r\n for word ${matchWord}`);
           wIndex = object[objProp].indexOf('}>}' + matchWord + '{<{');
+        }
+
+        let eStartIndex = object[objProp].indexOf('}b64}');
+        let eEndIndex = object[objProp].indexOf('{b64{');
+
+        while (eStartIndex !== -1 && eEndIndex !== -1) {
+        //  console.log(`match found in string ${object[objProp]} \r\n for word ${matchWord}`);
+        const chunk1 = object[objProp].substring(0, eStartIndex);
+        const chunk2 = object[objProp].substring(eStartIndex, eEndIndex);
+        // We use  the +5 to account for the length of the delimiter
+        const chunk3 = object[objProp].substring(eEndIndex + 5);
+
+          object[objProp] = chunk1 + encode.base64(chunk2) + chunk3;
+        //  console.log(`replaced string ${object[objProp]} \r\n for word ${matchWord}`);
+          eStartIndex = object[objProp].indexOf('}b64}');
+          eEndIndex = object[objProp].indexOf('{b64{');
         }
       }
     }
