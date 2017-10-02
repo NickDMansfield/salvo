@@ -34,6 +34,24 @@
 					}
 				}
 			]
+		},
+		{
+			"name": "Loops for each object in a stored array",
+			"description": "You can describe the operation here",
+			"iterations": {
+				"type": "for-each-in-array",
+				"iteratee": "loopVar2",
+				"sourceArray": ["string 1", "string 2", "string 3"]
+			},
+			"actions":[
+				{
+					"name": "Prints mesage",
+					"type": "print-statement",
+					"values": {
+						"text": "}>}loopVar2{<{"
+					}
+				}
+			]
 		}
 	]
 }
