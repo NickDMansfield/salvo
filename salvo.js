@@ -380,7 +380,6 @@ const runOperation = (operation, callback, _runCount, iterationOptions) => {
       timeout = (runTime - nowTime);
     }
   }
-
   if (runCount >= iterationOptions.iterations) {
     // Finishes the operation loop set for the current op
     return setTimeout(function() {
@@ -457,20 +456,38 @@ return new Promise(preloadsLoaded => {
   })
   .then(() => {
     // Preload values are loaded in and now we can begin operations
-    return Promise.each(salvoScript.operations, operation => {
+    return Promise.each(salvoScript.operations, _operation => {
       // Handle each operation in turn
+      let operation = JSON.parse(JSON.stringify(_operation));
+      substituteValues(operation);
       console.log(`Beginning operation ${operation.name}`);
       return new Promise(opResolve => {
         // Make a promise to handle pre-operation timing delay in each object
         const iterationOptions = { iterations: operation.iterations };
         if (typeof operation.iterations === 'object') {
+          if (operation.iterations.type === 'for-each-file') {
           // Loop over each item in a directory
-          return fs.readdir(process.cwd() + '/' + operation.iterations.directory, (err, items) => {
-            iterationOptions.iterations = items.length;
-            iterationOptions.type = operation.iterations.type;
-            iterationOptions.iteratorObjects = _.map(items, item => {
-              return operation.iterations.directory + '/' + item;
+            return fs.readdir(process.cwd() + '/' + operation.iterations.directory, (err, items) => {
+              iterationOptions.iterations = items.length;
+              iterationOptions.type = operation.iterations.type;
+              iterationOptions.iteratorObjects = _.map(items, item => {
+                return operation.iterations.directory + '/' + item;
+              });
+              iterationOptions.iteratee = operation.iterations.iteratee;
+              setTimeout(() => {
+                // The following code executes after the pre-operation delay
+            //    console.log(`Finished pre-operation delay on ${operation.name}`);
+                  // Run once for each iteration
+                runOperation(operation, opResolve, 0, iterationOptions);
+              }, operation.pre_delay_op || 0);
             });
+          }
+
+          if (operation.iterations.type === 'for-each-in-array') {
+          // Loop over each item in a directory
+            iterationOptions.iterations = typeof operation.iterations.sourceArray === 'string' ? JSON.parse(operation.iterations.sourceArray).length : operation.iterations.sourceArray.length;
+            iterationOptions.type = operation.iterations.type;
+            iterationOptions.iteratorObjects = typeof operation.iterations.sourceArray === 'string' ? JSON.parse(operation.iterations.sourceArray) : operation.iterations.sourceArray;
             iterationOptions.iteratee = operation.iterations.iteratee;
             setTimeout(() => {
               // The following code executes after the pre-operation delay
@@ -478,7 +495,7 @@ return new Promise(preloadsLoaded => {
                 // Run once for each iteration
               runOperation(operation, opResolve, 0, iterationOptions);
             }, operation.pre_delay_op || 0);
-          });
+          }
         } else {
           // If nothing else is defined, we assume it is a number
           setTimeout(() => {
