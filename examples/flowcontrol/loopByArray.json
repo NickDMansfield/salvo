@@ -1,0 +1,57 @@
+{
+	"name": "Loop via array",
+	"operations": [
+		{
+			"name": "Sets a var",
+			"description": "You can describe the operation here",
+			"iterations": 1,
+			"actions":[
+				{
+					"name": "set vars",
+					"type": "set-var",
+					"values": {
+						"target": "loopinArr",
+						"data": ["m1", "m2", "m3"],
+						"action": "set"
+					}
+				}
+			]
+		},
+		{
+			"name": "Loops for each object in an array",
+			"description": "You can describe the operation here",
+			"iterations": {
+				"type": "for-each-in-array",
+				"iteratee": "loopVar",
+				"sourceArray": "}>}loopinArr{<{"
+			},
+			"actions":[
+				{
+					"name": "Prints mesage",
+					"type": "print-statement",
+					"values": {
+						"text": "}>}loopVar{<{"
+					}
+				}
+			]
+		},
+		{
+			"name": "Loops for each object in a stored array",
+			"description": "You can describe the operation here",
+			"iterations": {
+				"type": "for-each-in-array",
+				"iteratee": "loopVar2",
+				"sourceArray": ["string 1", "string 2", "string 3"]
+			},
+			"actions":[
+				{
+					"name": "Prints mesage",
+					"type": "print-statement",
+					"values": {
+						"text": "}>}loopVar2{<{"
+					}
+				}
+			]
+		}
+	]
+}
