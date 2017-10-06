@@ -186,7 +186,9 @@ const areConditionsMet = conditionsArr => {
   return true;
 };
 
-const substituteValues = object => {
+const substituteValues = _object => {
+  // We make a copy of it, as doing otherwise prevents iterations from being substituted with a single operation
+  const object = JSON.parse(JSON.stringify(_object));
   for (let objProp in object) {
     if ((typeof object[objProp]).toLowerCase() === 'object') {
       objProp = substituteValues(object[objProp]);
@@ -392,7 +394,9 @@ const runAction = (actions, callback, _runCount) => {
     });
 };
 
-const runOperation = (operation, callback, _runCount, iterationOptions) => {
+const runOperation = (_operation, callback, _runCount, iterationOptions) => {
+  const operation = JSON.parse(JSON.stringify(_operation));
+  substituteValues(operation);
   const runCount = _runCount || 0;
   // This lets us use the run as a variable
   storedValues.runCount = runCount;
