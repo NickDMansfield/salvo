@@ -110,6 +110,10 @@ const updateVar = ((path, data, action) => {
     }
   }
 
+  if (action === 'increment-number') {
+    storedValues[path] = Number(storedValues[path] || 0) + Number(data);
+  }
+
   if (action === 'push') {
     if (!storedValues[path]) {
       storedValues[path] = [];
