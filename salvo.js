@@ -103,8 +103,8 @@ const captureData = (action, respSet) => {
 const updateVar = ((path, data, action) => {
 
   if (action === 'increment') {
-    if (typeof storedValues[path] === 'string') {
-      storedValues[path] = storedValues[path].toString() + data;
+    if (typeof storedValues[path] === 'string' || typeof storedValues[path] === 'undefined') {
+      storedValues[path] = (storedValues[path] ? storedValues[path].toString() : '') + data;
     } else {
       storedValues[path] = Number(storedValues[path]) + data;
     }
@@ -390,6 +390,8 @@ const runAction = (actions, callback, _runCount) => {
 
 const runOperation = (operation, callback, _runCount, iterationOptions) => {
   const runCount = _runCount || 0;
+  // This lets us use the run as a variable
+  storedValues.runCount = runCount;
   let timeout = 0;
   if (operation.run_at) {
     const nowTime = Number(new Date());
