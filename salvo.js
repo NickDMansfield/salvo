@@ -19,7 +19,6 @@ const encode = require('./capabilities/utils/encoding.js');
 
 const storedValues = {
   datetimeRun: new Date().valueOf(),
-  access_token:'TEMPORARY_TOKEN',
   curDir: process.cwd()
 };
 
