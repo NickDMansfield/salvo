@@ -191,7 +191,7 @@ const substituteValues = _object => {
   const object = JSON.parse(JSON.stringify(_object));
   for (let objProp in object) {
     if ((typeof object[objProp]).toLowerCase() === 'object') {
-      objProp = substituteValues(object[objProp]);
+      object[objProp] = substituteValues(object[objProp]);
     } else if (typeof object[objProp] === 'string') {
       const valKeys = Object.keys(storedValues);
       for (let zz = 0; zz < valKeys.length; ++zz) {
@@ -224,13 +224,15 @@ const substituteValues = _object => {
       }
     }
   }
+  //console.log(`returning: ${JSON.stringify(object)}`);
+  return object;
 };
 
 const runAction = (actions, callback, _runCount) => {
     const runCount = _runCount || 0;
-    const action = JSON.parse(JSON.stringify(actions[runCount]));
+    let action = JSON.parse(JSON.stringify(actions[runCount]));
     const backupAction = JSON.parse(JSON.stringify(action));
-    substituteValues(action);
+    action = substituteValues(action);
     console.log(`action res:${JSON.stringify(action)} `);
     return new Promise(preDelay => {
       setTimeout(function () {
