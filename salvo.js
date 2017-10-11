@@ -130,7 +130,7 @@ const makeRestCall = callProps => {
     path: callProps.path, // path substitution var
     parameters: callProps.parameters, // this is serialized as URL parameters
     headers: callProps.headers, // request headers
-    requestConfig: callProps.requestConfig || { timeout: 300000, noDelay: true, keepAlive: true },
+    requestConfig: callProps.requestConfig || { timeout: 300000, keepAlive: true },
     responseConfig: callProps.responseConfig || { timeout: 300000 }
   };
 
@@ -155,10 +155,14 @@ const makeRestCall = callProps => {
         return callFinished([data, response]);
       });
     }
-    return rClient.post(callProps.target, requestArgs, (data, response) => {
+    const req = rClient.post(callProps.target, requestArgs, (data, response) => {
   //        console.log(`CALL DATA get= ${JSON.stringify(data)}`);
       return callFinished([data, response]);
     });
+    req.on('error', err => {
+      console.log(`Request sending error: ${err}`);
+    });
+    return req;
   })
   .then(responseSet => {
     return responseSet;
