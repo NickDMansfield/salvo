@@ -129,7 +129,9 @@ const makeRestCall = callProps => {
     data: callProps.data, // data passed to REST method (only useful in POST, PUT or PATCH methods)
     path: callProps.path, // path substitution var
     parameters: callProps.parameters, // this is serialized as URL parameters
-    headers: callProps.headers // request headers
+    headers: callProps.headers, // request headers
+    requestConfig: callProps.requestConfig || { timeout: 300000, noDelay: true, keepAlive: true },
+    responseConfig: callProps.responseConfig || { timeout: 300000 }
   };
 
   return new Promise(callFinished => {
