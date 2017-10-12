@@ -327,10 +327,11 @@ const runAction = (actions, callback, _runCount) => {
               console.log(`Exiting this step early, as the file does not exist at location : \r\n ${process.cwd()}/${action.values.fileLocation}`);
             }
             return new Promise(resolveRead => {
-              return fs.readFile(`${process.cwd()}/${action.values.fileLocation}`, 'utf8', (err, readData) => {
+              return fs.readFile(`${process.cwd()}/${action.values.fileLocation}`, 'utf8', (err, _readData) => {
                 if (err) {
                   return false;
                 }
+                const readData = _readData;
                 let writeData = readData || '';
             //    console.log(readData);
                 if (dataOperations.indexOf('jsonstringify') > -1) {
@@ -494,7 +495,6 @@ return new Promise(preloadsLoaded => {
     return Promise.each(salvoScript.operations, _operation => {
       // Handle each operation in turn
       let operation = JSON.parse(JSON.stringify(_operation));
-      operation = substituteValues(operation);
       console.log(`Beginning operation ${operation.name}`);
       return new Promise(opResolve => {
         // Make a promise to handle pre-operation timing delay in each object
