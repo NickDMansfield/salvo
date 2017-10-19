@@ -405,7 +405,7 @@ const runAction = (actions, callback, _runCount) => {
 const runOperation = (_operation, callback, _runCount, iterationOptions) => {
   const operation = JSON.parse(JSON.stringify(_operation));
   substituteValues(operation);
-  const runCount = _runCount || 0;
+  let runCount = _runCount || 0;
   // This lets us use the run as a variable
   storedValues.runCount = runCount;
   let timeout = 0;
@@ -416,6 +416,13 @@ const runOperation = (_operation, callback, _runCount, iterationOptions) => {
       timeout = (runTime - nowTime);
     }
   }
+  if (iterationOptions.type === 'do-while') {
+    if (areConditionsMet(iterationOptions.conditions)) {
+      runCount = 0;
+    } else {
+      iterationOptions.iterations = 0;
+    }
+  }
   if (runCount >= iterationOptions.iterations) {
     // Finishes the operation loop set for the current op
     return setTimeout(function() {
@@ -423,7 +430,7 @@ const runOperation = (_operation, callback, _runCount, iterationOptions) => {
       callback();
     }, operation.post_delay_op || 0);
   }
-  if (iterationOptions.type) {
+  if (iterationOptions.type && iterationOptions.iteratorObjects) {
     // Store the current iteratee as a variable to be used in the subsequent actions
     storedValues[iterationOptions.iteratee] = iterationOptions.iteratorObjects[runCount];
   }
@@ -524,6 +531,19 @@ return new Promise(preloadsLoaded => {
             iterationOptions.type = operation.iterations.type;
             iterationOptions.iteratorObjects = typeof operation.iterations.sourceArray === 'string' ? JSON.parse(operation.iterations.sourceArray) : operation.iterations.sourceArray;
             iterationOptions.iteratee = operation.iterations.iteratee;
+            setTimeout(() => {
+              // The following code executes after the pre-operation delay
+          //    console.log(`Finished pre-operation delay on ${operation.name}`);
+                // Run once for each iteration
+              runOperation(operation, opResolve, 0, iterationOptions);
+            }, operation.pre_delay_op || 0);
+          }
+
+          if (operation.iterations.type === 'do-while') {
+          // Loop over each item in a directory
+            iterationOptions.iterations = 1;
+            iterationOptions.type = operation.iterations.type;
+            iterationOptions.conditions = operation.iterations.conditions;
             setTimeout(() => {
               // The following code executes after the pre-operation delay
           //    console.log(`Finished pre-operation delay on ${operation.name}`);
