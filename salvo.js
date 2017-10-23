@@ -17,9 +17,16 @@ const request = require('request');
 const Time = require('time-js')
 const encode = require('./capabilities/utils/encoding.js');
 
+const logLevel = 0;
 const storedValues = {
   datetimeRun: new Date().valueOf(),
   curDir: process.cwd()
+};
+
+const smartLog = (string, lvlRequired) => {
+  if (lvlRequired && logLevel >= lvlRequired) {
+    console.log(string);
+  }
 };
 
 const extractData = ((extractionData, method, extractionModifiers) => {
@@ -62,7 +69,7 @@ const extractData = ((extractionData, method, extractionModifiers) => {
 });
 
 const captureData = (action, respSet) => {
-  // console.log(`RESPSET: ${JSON.stringify(respSet, 0, 2)}`);
+  // smartLog(`RESPSET: ${JSON.stringify(respSet, 0, 2)}`);
   const data = (typeof respSet).toLowerCase() === 'object' ? respSet[0] : respSet;
   if (!action.capture) {
     // Terminate early if there is no capture data
@@ -94,7 +101,7 @@ const captureData = (action, respSet) => {
       }
       storedValues[captureItem.target].push(foundData);
     }
-    console.log(`STORED VALUES \r\n ${util.inspect(storedValues)}`);
+    smartLog(`STORED VALUES \r\n ${util.inspect(storedValues)}`);
   }
   return true;
 };
@@ -140,27 +147,27 @@ const makeRestCall = callProps => {
       formData[callProps.attachment.fileName] = fs.createReadStream(callProps.attachment.filePath);
       return request.post({ url: callProps.target, formData, headers: callProps.headers }, (err, httpResult) => {
         if (err) {
-          console.log(`Error sending file: ${err}`);
+          smartLog(`Error sending file: ${err}`);
         }
         // -The httpResult comes in the format { statusCode: 200, body: "bodyData" }
         // -Body comes back as a string, so we parse it before passing it on, to maintain
         //    consistency with other call's behavior
-          console.log(`upload result: ${httpResult.body}`);
+          smartLog(`upload result: ${httpResult.body}`);
         return callFinished([JSON.parse(httpResult.body)]);
       });
     }
     if (callProps.method.toLowerCase() === 'get') {
       return rClient.get(callProps.target, requestArgs, (data, response) => {
-    //    console.log(`CALL DATA get= ${data}`);
+    //    smartLog(`CALL DATA get= ${data}`);
         return callFinished([data, response]);
       });
     }
     const req = rClient.post(callProps.target, requestArgs, (data, response) => {
-  //        console.log(`CALL DATA get= ${JSON.stringify(data)}`);
+  //        smartLog(`CALL DATA get= ${JSON.stringify(data)}`);
       return callFinished([data, response]);
     });
     req.on('error', err => {
-      console.log(`Request sending error: ${err}`);
+      smartLog(`Request sending error: ${err}`);
     });
     return req;
   })
@@ -205,9 +212,9 @@ const substituteValues = _object => {
         // Handle replacements of text with variables
         let wIndex = object[objProp].indexOf('}>}' + matchWord + '{<{');
         while (wIndex != -1) {
-        //  console.log(`match found in string ${object[objProp]} \r\n for word ${matchWord}`);
+        //  smartLog(`match found in string ${object[objProp]} \r\n for word ${matchWord}`);
           object[objProp] = object[objProp].split('}>}' + matchWord + '{<{').join(storedValue);
-        //  console.log(`replaced string ${object[objProp]} \r\n for word ${matchWord}`);
+        //  smartLog(`replaced string ${object[objProp]} \r\n for word ${matchWord}`);
           wIndex = object[objProp].indexOf('}>}' + matchWord + '{<{');
         }
 
@@ -215,21 +222,21 @@ const substituteValues = _object => {
         let eEndIndex = object[objProp].indexOf('{b64{');
 
         while (eStartIndex !== -1 && eEndIndex !== -1) {
-        //  console.log(`match found in string ${object[objProp]} \r\n for word ${matchWord}`);
+        //  smartLog(`match found in string ${object[objProp]} \r\n for word ${matchWord}`);
         const chunk1 = object[objProp].substring(0, eStartIndex);
         const chunk2 = object[objProp].substring(eStartIndex, eEndIndex);
         // We use  the +5 to account for the length of the delimiter
         const chunk3 = object[objProp].substring(eEndIndex + 5);
 
           object[objProp] = chunk1 + encode.base64(chunk2) + chunk3;
-        //  console.log(`replaced string ${object[objProp]} \r\n for word ${matchWord}`);
+        //  smartLog(`replaced string ${object[objProp]} \r\n for word ${matchWord}`);
           eStartIndex = object[objProp].indexOf('}b64}');
           eEndIndex = object[objProp].indexOf('{b64{');
         }
       }
     }
   }
-  //console.log(`returning: ${JSON.stringify(object)}`);
+  //smartLog(`returning: ${JSON.stringify(object)}`);
   return object;
 };
 
@@ -238,10 +245,10 @@ const runAction = (actions, callback, _runCount) => {
     let action = JSON.parse(JSON.stringify(actions[runCount]));
     const backupAction = JSON.parse(JSON.stringify(action));
     action = substituteValues(action);
-    console.log(`action res:${JSON.stringify(action)} `);
+    smartLog(`action res:${JSON.stringify(action)} `, 2);
     return new Promise(preDelay => {
       setTimeout(function () {
-      //  console.log(`Pre-action delay finished for ${action.name}`);
+      //  smartLog(`Pre-action delay finished for ${action.name}`);
         // Execute action depending on type
         preDelay();
       }, action.pre_delay || 0);
@@ -262,9 +269,9 @@ const runAction = (actions, callback, _runCount) => {
               terminalCommand += ' ' + action.values.arguments[zz].key + action.values.arguments[zz].value;
             }
           }
-          console.log(`TERMINAL COMMAND: ${terminalCommand}`);
+          smartLog(`TERMINAL COMMAND: ${terminalCommand}`);
           return cmd.get(terminalCommand, (err, resp) => {
-            console.log(`NODE res:${(resp)} `);
+            smartLog(`NODE res:${(resp)} `);
             if (action.capture && action.capture.length > 0) {
               captureData(action, resp);
             }
@@ -278,7 +285,7 @@ const runAction = (actions, callback, _runCount) => {
         }
 
         if (action.type === 'print-statement') {
-          console.log(action.values.text);
+          smartLog(action.values.text);
           return actionPromise();
         }
 
@@ -324,7 +331,7 @@ const runAction = (actions, callback, _runCount) => {
               return op.toLowerCase();
             });
             if (!fs.existsSync(`${process.cwd()}/${action.values.fileLocation}`)) {
-              console.log(`Exiting this step early, as the file does not exist at location : \r\n ${process.cwd()}/${action.values.fileLocation}`);
+              smartLog(`Exiting this step early, as the file does not exist at location : \r\n ${process.cwd()}/${action.values.fileLocation}`);
             }
             return new Promise(resolveRead => {
               return fs.readFile(`${process.cwd()}/${action.values.fileLocation}`, 'utf8', (err, _readData) => {
@@ -333,7 +340,7 @@ const runAction = (actions, callback, _runCount) => {
                 }
                 const readData = _readData;
                 let writeData = readData || '';
-            //    console.log(readData);
+            //    smartLog(readData);
                 if (dataOperations.indexOf('jsonstringify') > -1) {
                   writeData = JSON.stringify(readData);
                 }
@@ -343,7 +350,7 @@ const runAction = (actions, callback, _runCount) => {
                   const xmlParser = new xml2js.Parser(action.values.parseParameters || {});
                   return xmlParser.parseString(readData, (err2, parsedXML) => {
                     if (err2) {
-                      console.log(`Error reading file:  ${err2}`);
+                      smartLog(`Error reading file:  ${err2}`);
                       return resolveRead(false);
                     }
                     for (let zz = 0; zz < action.values.data.length; ++zz) {
@@ -375,7 +382,7 @@ const runAction = (actions, callback, _runCount) => {
               if (!writeData) {
                 resolve2();
               }
-              console.log(`DATA TO  WRITE \r\n ${writeData}`);
+              smartLog(`DATA TO  WRITE \r\n ${writeData}`);
               return fs.writeFile(`${process.cwd()}/${action.values.fileLocation}`, writeData, () => {
                 return resolve2();
               });
@@ -389,7 +396,7 @@ const runAction = (actions, callback, _runCount) => {
       })
       .then(() => {
         setTimeout(function() {
-        //  console.log(`Post-delay finished for ${action.name}`);
+        //  smartLog(`Post-delay finished for ${action.name}`);
           if (runCount < actions.length - 1) {
             actions[runCount] = backupAction;
             return runAction(actions, callback, runCount + 1)
@@ -426,7 +433,7 @@ const runOperation = (_operation, callback, _runCount, iterationOptions) => {
   if (runCount >= iterationOptions.iterations) {
     // Finishes the operation loop set for the current op
     return setTimeout(function() {
-    //  console.log(`Finished operation delay for ${operation.name}`);
+    //  smartLog(`Finished operation delay for ${operation.name}`);
       callback();
     }, operation.post_delay_op || 0);
   }
@@ -435,13 +442,13 @@ const runOperation = (_operation, callback, _runCount, iterationOptions) => {
     storedValues[iterationOptions.iteratee] = iterationOptions.iteratorObjects[runCount];
   }
   setTimeout(function () {
-    // console.log(`Finished pre-loop delay for ${operation.name}`)
+    // smartLog(`Finished pre-loop delay for ${operation.name}`)
   return new Promise(iterationFinished => {
     runAction(operation.actions, iterationFinished, 0);
   })
   .then(() => {
     setTimeout(function() {
-    //  console.log(`Finished post delay(loop) for operation ${operation.name}`);
+    //  smartLog(`Finished post delay(loop) for operation ${operation.name}`);
       if (runCount < iterationOptions.iterations) {
         return runOperation(operation, callback, runCount + 1, iterationOptions);
       }
@@ -457,14 +464,17 @@ program
   .parse(process.argv);
 
 if (!program.target) {
-  console.log('No salvo file specified.  Please provide a relative file path with the -t parameter');
+  smartLog('No salvo file specified.  Please provide a relative file path with the -t parameter');
   process.exit();
 }
 
 const salvoScript = require(`${process.cwd()}/${program.target}`);
 // Requires format -t './filename'
-console.log(`Beginning salvo ${salvoScript.name}`);
+smartLog(`Beginning salvo ${salvoScript.name}`);
 return new Promise(preloadsLoaded => {
+  if (salvoScript.logLevel) {
+    logLevel = salvoScript.logLevel;
+  }
   if (!salvoScript.preloads) {
     return preloadsLoaded([]);
   }
@@ -478,7 +488,7 @@ return new Promise(preloadsLoaded => {
 })
 .then(_loadedFiles => {
   let loadedFiles = _loadedFiles;
-  console.log(`Loaded values: ${JSON.stringify(loadedFiles)}`);
+  smartLog(`Loaded values: ${JSON.stringify(loadedFiles)}`);
   return new Promise(resolve => {
     if (!loadedFiles) {
       // To avoid loop errors, we set it to an empty array
@@ -494,7 +504,7 @@ return new Promise(preloadsLoaded => {
         storedValues[key] = dataObject[key];
       }
     }
-//    console.log(`preserved values: ${JSON.stringify(storedValues)}`);
+//    smartLog(`preserved values: ${JSON.stringify(storedValues)}`);
     resolve();
   })
   .then(() => {
@@ -502,7 +512,7 @@ return new Promise(preloadsLoaded => {
     return Promise.each(salvoScript.operations, _operation => {
       // Handle each operation in turn
       let operation = JSON.parse(JSON.stringify(_operation));
-      console.log(`Beginning operation ${operation.name}`);
+      smartLog(`Beginning operation ${operation.name}`);
       return new Promise(opResolve => {
         // Make a promise to handle pre-operation timing delay in each object
         const iterationOptions = { iterations: operation.iterations };
@@ -518,7 +528,7 @@ return new Promise(preloadsLoaded => {
               iterationOptions.iteratee = operation.iterations.iteratee;
               setTimeout(() => {
                 // The following code executes after the pre-operation delay
-            //    console.log(`Finished pre-operation delay on ${operation.name}`);
+            //    smartLog(`Finished pre-operation delay on ${operation.name}`);
                   // Run once for each iteration
                 runOperation(operation, opResolve, 0, iterationOptions);
               }, operation.pre_delay_op || 0);
@@ -533,7 +543,7 @@ return new Promise(preloadsLoaded => {
             iterationOptions.iteratee = operation.iterations.iteratee;
             setTimeout(() => {
               // The following code executes after the pre-operation delay
-          //    console.log(`Finished pre-operation delay on ${operation.name}`);
+          //    smartLog(`Finished pre-operation delay on ${operation.name}`);
                 // Run once for each iteration
               runOperation(operation, opResolve, 0, iterationOptions);
             }, operation.pre_delay_op || 0);
@@ -546,7 +556,7 @@ return new Promise(preloadsLoaded => {
             iterationOptions.conditions = operation.iterations.conditions;
             setTimeout(() => {
               // The following code executes after the pre-operation delay
-          //    console.log(`Finished pre-operation delay on ${operation.name}`);
+          //    smartLog(`Finished pre-operation delay on ${operation.name}`);
                 // Run once for each iteration
               runOperation(operation, opResolve, 0, iterationOptions);
             }, operation.pre_delay_op || 0);
@@ -555,7 +565,7 @@ return new Promise(preloadsLoaded => {
           // If nothing else is defined, we assume it is a number
           setTimeout(() => {
             // The following code executes after the pre-operation delay
-          //  console.log(`Finished pre-operation delay on ${operation.name}`);
+          //  smartLog(`Finished pre-operation delay on ${operation.name}`);
               // Run once for each iteration
             runOperation(operation, opResolve, 0, iterationOptions);
           }, operation.pre_delay_op || 0);
@@ -563,7 +573,7 @@ return new Promise(preloadsLoaded => {
       });
     })
     .then(() => {
-      console.log('All ops finished');
+      smartLog('All ops finished', 1);
       process.exit();
     });
   });
