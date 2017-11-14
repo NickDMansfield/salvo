@@ -1,5 +1,6 @@
 {
 	"name": "Loop via array",
+	"logLevel": 5,
 	"operations": [
 		{
 			"name": "Sets a var",

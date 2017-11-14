@@ -520,7 +520,9 @@ return new Promise(preloadsLoaded => {
     return Promise.each(salvoScript.operations, _operation => {
       // Handle each operation in turn
       let operation = JSON.parse(JSON.stringify(_operation));
+      operation = substituteValues(operation);
       smartLog(`Beginning operation ${operation.name}`, 2);
+      smartLog(`Operation Properties: ${JSON.stringify(operation)}`, 3)
       return new Promise(opResolve => {
         // Make a promise to handle pre-operation timing delay in each object
         const iterationOptions = { iterations: operation.iterations };
