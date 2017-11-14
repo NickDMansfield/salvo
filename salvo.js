@@ -17,7 +17,9 @@ const request = require('request');
 const Time = require('time-js')
 const encode = require('./capabilities/utils/encoding.js');
 
-const logLevel = 0;
+let logLevel = 0;
+let showErrors = true;
+
 const storedValues = {
   datetimeRun: new Date().valueOf(),
   curDir: process.cwd()
@@ -25,6 +27,12 @@ const storedValues = {
 
 const smartLog = (string, lvlRequired) => {
   if (lvlRequired && logLevel >= lvlRequired) {
+    console.log(string);
+  }
+};
+
+const showErr = (string) => {
+  if (showErrors) {
     console.log(string);
   }
 };
@@ -101,7 +109,7 @@ const captureData = (action, respSet) => {
       }
       storedValues[captureItem.target].push(foundData);
     }
-    smartLog(`STORED VALUES \r\n ${util.inspect(storedValues)}`);
+    smartLog(`STORED VALUES \r\n ${util.inspect(storedValues)}`, 3);
   }
   return true;
 };
@@ -147,12 +155,12 @@ const makeRestCall = callProps => {
       formData[callProps.attachment.fileName] = fs.createReadStream(callProps.attachment.filePath);
       return request.post({ url: callProps.target, formData, headers: callProps.headers }, (err, httpResult) => {
         if (err) {
-          smartLog(`Error sending file: ${err}`);
+          showErr(`Error sending file: ${err}`);
         }
         // -The httpResult comes in the format { statusCode: 200, body: "bodyData" }
         // -Body comes back as a string, so we parse it before passing it on, to maintain
         //    consistency with other call's behavior
-          smartLog(`upload result: ${httpResult.body}`);
+          smartLog(`upload result: ${httpResult.body}`, 3);
         return callFinished([JSON.parse(httpResult.body)]);
       });
     }
@@ -167,7 +175,7 @@ const makeRestCall = callProps => {
       return callFinished([data, response]);
     });
     req.on('error', err => {
-      smartLog(`Request sending error: ${err}`);
+      showErr(`Request sending error: ${err}`);
     });
     return req;
   })
@@ -269,9 +277,9 @@ const runAction = (actions, callback, _runCount) => {
               terminalCommand += ' ' + action.values.arguments[zz].key + action.values.arguments[zz].value;
             }
           }
-          smartLog(`TERMINAL COMMAND: ${terminalCommand}`);
+          smartLog(`TERMINAL COMMAND: ${terminalCommand}`, 3);
           return cmd.get(terminalCommand, (err, resp) => {
-            smartLog(`NODE res:${(resp)} `);
+            smartLog(`NODE res:${(resp)} `, 3);
             if (action.capture && action.capture.length > 0) {
               captureData(action, resp);
             }
@@ -285,7 +293,7 @@ const runAction = (actions, callback, _runCount) => {
         }
 
         if (action.type === 'print-statement') {
-          smartLog(action.values.text);
+          console.log(action.values.text);
           return actionPromise();
         }
 
@@ -331,7 +339,7 @@ const runAction = (actions, callback, _runCount) => {
               return op.toLowerCase();
             });
             if (!fs.existsSync(`${process.cwd()}/${action.values.fileLocation}`)) {
-              smartLog(`Exiting this step early, as the file does not exist at location : \r\n ${process.cwd()}/${action.values.fileLocation}`);
+              showErr(`Exiting this step early, as the file does not exist at location : \r\n ${process.cwd()}/${action.values.fileLocation}`);
             }
             return new Promise(resolveRead => {
               return fs.readFile(`${process.cwd()}/${action.values.fileLocation}`, 'utf8', (err, _readData) => {
@@ -350,7 +358,7 @@ const runAction = (actions, callback, _runCount) => {
                   const xmlParser = new xml2js.Parser(action.values.parseParameters || {});
                   return xmlParser.parseString(readData, (err2, parsedXML) => {
                     if (err2) {
-                      smartLog(`Error reading file:  ${err2}`);
+                      showErr(`Error reading file:  ${err2}`);
                       return resolveRead(false);
                     }
                     for (let zz = 0; zz < action.values.data.length; ++zz) {
@@ -382,7 +390,7 @@ const runAction = (actions, callback, _runCount) => {
               if (!writeData) {
                 resolve2();
               }
-              smartLog(`DATA TO  WRITE \r\n ${writeData}`);
+              smartLog(`DATA TO  WRITE \r\n ${writeData}`, 4);
               return fs.writeFile(`${process.cwd()}/${action.values.fileLocation}`, writeData, () => {
                 return resolve2();
               });
@@ -464,13 +472,13 @@ program
   .parse(process.argv);
 
 if (!program.target) {
-  smartLog('No salvo file specified.  Please provide a relative file path with the -t parameter');
+  showErr('No salvo file specified.  Please provide a relative file path with the -t parameter');
   process.exit();
 }
 
 const salvoScript = require(`${process.cwd()}/${program.target}`);
 // Requires format -t './filename'
-smartLog(`Beginning salvo ${salvoScript.name}`);
+smartLog(`Beginning salvo ${salvoScript.name}`, 2);
 return new Promise(preloadsLoaded => {
   if (salvoScript.logLevel) {
     logLevel = salvoScript.logLevel;
@@ -488,7 +496,7 @@ return new Promise(preloadsLoaded => {
 })
 .then(_loadedFiles => {
   let loadedFiles = _loadedFiles;
-  smartLog(`Loaded values: ${JSON.stringify(loadedFiles)}`);
+  smartLog(`Loaded values: ${JSON.stringify(loadedFiles)}`, 2);
   return new Promise(resolve => {
     if (!loadedFiles) {
       // To avoid loop errors, we set it to an empty array
@@ -512,7 +520,7 @@ return new Promise(preloadsLoaded => {
     return Promise.each(salvoScript.operations, _operation => {
       // Handle each operation in turn
       let operation = JSON.parse(JSON.stringify(_operation));
-      smartLog(`Beginning operation ${operation.name}`);
+      smartLog(`Beginning operation ${operation.name}`, 2);
       return new Promise(opResolve => {
         // Make a promise to handle pre-operation timing delay in each object
         const iterationOptions = { iterations: operation.iterations };
