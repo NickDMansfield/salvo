@@ -448,6 +448,11 @@ const runOperation = (_operation, callback, _runCount, iterationOptions) => {
   if (iterationOptions.type && iterationOptions.iteratorObjects) {
     // Store the current iteratee as a variable to be used in the subsequent actions
     storedValues[iterationOptions.iteratee] = iterationOptions.iteratorObjects[runCount];
+    if (iterationOptions.type === 'for-each-file') {
+      storedValues.iteratedFile = iterationOptions.iteratorObjects[runCount].file;
+      storedValues[iterationOptions.iteratee] = iterationOptions.iteratorObjects[runCount].filePath;
+      storedValues.iteratedDir = iterationOptions.iteratorObjects[runCount].directory;
+    }
   }
   setTimeout(function () {
     // smartLog(`Finished pre-loop delay for ${operation.name}`)
@@ -529,11 +534,20 @@ return new Promise(preloadsLoaded => {
         if (typeof operation.iterations === 'object') {
           if (operation.iterations.type === 'for-each-file') {
           // Loop over each item in a directory
-            return fs.readdir(process.cwd() + '/' + operation.iterations.directory, (err, items) => {
+            return fs.readdir(process.cwd() + '/' + operation.iterations.directory, (err, _items) => {
+              let items = _items;
+              if (operation.iterations.excludeFiles && Array.isArray(operation.iterations.excludeFiles)) {
+                items = _.filter(_items, item => {
+                  return operation.iterations.excludeFiles.indexOf(item) < 0;
+                });
+              }
               iterationOptions.iterations = items.length;
               iterationOptions.type = operation.iterations.type;
               iterationOptions.iteratorObjects = _.map(items, item => {
-                return operation.iterations.directory + '/' + item;
+                return { filePath: operation.iterations.directory + '/' + item,
+                  file: item,
+                  directory: operation.iterations.directory
+                };
               });
               iterationOptions.iteratee = operation.iterations.iteratee;
               setTimeout(() => {

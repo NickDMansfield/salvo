@@ -7,7 +7,8 @@
       "iterations": {
         "type": "for-each-file",
         "iteratee": "fileName",
-        "directory": "dummyFiles"
+        "directory": "dummyFiles",
+        "excludeFiles": ["excludeme.txt"]
       },
       "actions": [
       {
@@ -19,6 +20,13 @@
           "dataOperations": [],
           "data": "}>}fileName{<{",
           "fileLocation": "}>}fileName{<{"
+        }
+      },
+      {
+        "name": "Log file info",
+        "type": "print-statement",
+        "values": {
+          "text": "full path:}>}fileName{<{ \r\n directory: }>}iteratedDir{<{ \r\n fileName: }>}iteratedFile{<{"
         }
       }
       ]
