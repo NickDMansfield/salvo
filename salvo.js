@@ -339,6 +339,12 @@ const runAction = (actions, callback, _runCount) => {
               return op.toLowerCase();
             });
             if (!fs.existsSync(`${process.cwd()}/${action.values.fileLocation}`)) {
+              if (!action.values.fileType || action.values.fileType === 'text') {
+                // We check this as auto-file creation only supports text
+                return fs.writeFile(`${process.cwd()}/${action.values.fileLocation}`, action.values.data, () => {
+                  return resolve2();
+                });
+              }
               showErr(`Exiting this step early, as the file does not exist at location : \r\n ${process.cwd()}/${action.values.fileLocation}`);
             }
             return new Promise(resolveRead => {
@@ -348,7 +354,7 @@ const runAction = (actions, callback, _runCount) => {
                 }
                 const readData = _readData;
                 let writeData = readData || '';
-            //    smartLog(readData);
+                smartLog(readData, 4);
                 if (dataOperations.indexOf('jsonstringify') > -1) {
                   writeData = JSON.stringify(readData);
                 }

@@ -1,11 +1,9 @@
 JSON insertion
 appending text
 when setting vars, accept array of var values
-support express calling of scripts (may not be necessary considering terminal command)
-add scaled logging class, so logs can be controlled via a setting
 make update-file create a file if one doesn't exist
-Combine write-file and update-file into a single action type
+Combine write-file and update-file into a single action type for non-text stuff
 Make do until (time)
 add time to logs
 fix xml conversion
--Add file exclusion to for-each-file
+fix bug with post_delay_op not waiting
