@@ -77,7 +77,7 @@ const extractData = ((extractionData, method, extractionModifiers) => {
 });
 
 const captureData = (action, respSet) => {
-  // smartLog(`RESPSET: ${JSON.stringify(respSet, 0, 2)}`);
+  smartLog(`RESPSET: ${JSON.stringify(respSet, 0, 2)}`, 5);
   const data = (typeof respSet).toLowerCase() === 'object' ? respSet[0] : respSet;
   if (!action.capture) {
     // Terminate early if there is no capture data
