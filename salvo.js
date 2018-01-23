@@ -77,7 +77,7 @@ const extractData = ((extractionData, method, extractionModifiers) => {
 });
 
 const captureData = (action, respSet) => {
-  smartLog(`RESPSET: ${JSON.stringify(respSet, 0, 2)}`, 5);
+  smartLog(`RESPSET: ${util.inspect(respSet, 0, 2)}`, 5);
   const data = (typeof respSet).toLowerCase() === 'object' ? respSet[0] : respSet;
   if (!action.capture) {
     // Terminate early if there is no capture data
@@ -171,7 +171,7 @@ const makeRestCall = callProps => {
       });
     }
     const req = rClient.post(callProps.target, requestArgs, (data, response) => {
-  //        smartLog(`CALL DATA get= ${JSON.stringify(data)}`);
+          smartLog(`CALL DATA get= ${(data)}`, 5);
       return callFinished([data, response]);
     });
     req.on('error', err => {
