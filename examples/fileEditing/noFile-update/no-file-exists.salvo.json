@@ -1,0 +1,31 @@
+{
+    "name": "Update non-existent file",
+    "logLevel": 5,
+    "operations": [
+        {
+            "name": "Delete file if it exists",
+            "post_delay_loop": 5000,
+            "actions": [
+                {
+                    "type": "terminal",
+                    "values": {
+                        "text": "rm testFile.txt"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Edit/create file",
+            "actions": [
+                {
+                    "name": "Edit file",
+                    "type": "update-file",
+                    "values": {
+                        "fileLocation": "testFile.txt",
+                        "data": "WOWEE!"
+                    }
+                }
+            ]
+        }
+    ]
+}

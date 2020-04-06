@@ -1,0 +1,6 @@
+{
+  "environment": "TEST",
+  "duration": 10,
+  "arrivalRate": 1,
+  "incrementAmount": 1
+}

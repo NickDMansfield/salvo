@@ -1,0 +1,52 @@
+{
+  "name": "do-while test",
+  "operations": [
+    {
+      "name": "setup op",
+      "iterations": 1,
+      "actions": [
+        {
+          "name": "set var",
+          "type": "set-var",
+          "values": {
+            "target": "iterCounter",
+            "data": 0,
+            "action": "set"
+          }
+        }
+      ]
+    },
+    {
+      "name": "only loop 7 times",
+      "iterations": {
+        "type": "do-while",
+        "conditions": [
+          {
+            "type": "does-var-not-equal",
+            "varName": "iterCounter",
+            "checkValue": 7
+          }
+        ]
+      },
+      "post_delay_loop": 2000,
+      "actions": [
+        {
+          "name": "log counter",
+          "type": "print-statement",
+          "values": {
+            "text": "loop number }>}iterCounter{<{"
+          }
+        },
+        {
+          "name": "increment counter",
+          "type": "set-var",
+          "values": {
+            "target": "iterCounter",
+            "data": 1,
+            "action": "increment-number"
+          }
+        }
+      ]
+    }
+  ]
+}
