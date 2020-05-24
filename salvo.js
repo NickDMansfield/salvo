@@ -17,6 +17,10 @@ const request = require('request');
 const Time = require('time-js')
 const encode = require('./capabilities/utils/encoding.js');
 
+const storedValues = {
+  datetimeRun: new Date().valueOf(),
+  access_token:'TEMPORARY_TOKEN'
+};
 let logLevel = 0;
 let showErrors = true;
 
