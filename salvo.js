@@ -24,9 +24,11 @@ const storedValues = {
 let logLevel = 0;
 let showErrors = true;
 
+const pathSlash = process.cwd().indexOf("/") > 0 ? '/' : '\\';
 const storedValues = {
   datetimeRun: new Date().valueOf(),
-  curDir: process.cwd()
+  curDir: process.cwd(),
+  pathSlash
 };
 
 const smartLog = (string, lvlRequired) => {
@@ -342,7 +344,7 @@ const runAction = (actions, callback, _runCount) => {
             const dataOperations = _.map(action.values.dataOperations, op => {
               return op.toLowerCase();
             });
-            if (!fs.existsSync(`${process.cwd()}/${action.values.fileLocation}`)) {
+            if (!fs.existsSync(`${process.cwd()}${pathSlash}${action.values.fileLocation}`)) {
               if (!action.values.fileType || action.values.fileType === 'text') {
                 // We check this as auto-file creation only supports text
                 return fs.writeFile(`${process.cwd()}/${action.values.fileLocation}`, action.values.data, () => {
