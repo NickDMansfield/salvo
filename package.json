@@ -1,8 +1,8 @@
 {
   "name": "salvo",
-  "version": "0.2.981",
+  "version": "0.4.48",
   "description": "A JSON-based scripting and automation platform.",
-  "main": "index.js",
+  "main": "salvo.js",
   "scripts": {
     "test": "node test.js"
   },
@@ -20,12 +20,19 @@
   },
   "homepage": "https://github.com/NickDMansfield/salvo#readme",
   "dependencies": {
+    "bluebird": "^3.5.1",
     "commander": "^2.9.0",
     "json-query": "^2.2.2",
+    "lodash": "^4.17.4",
     "node-cmd": "^3.0.0",
     "node-rest-client": "^3.1.0",
     "vow-xamel": "0.0.4",
     "xamel": "^0.3.1",
+    "nodemailer": "^4.0.1",
+    "replace-in-file": "^2.5.4",
+    "request": "^2.81.0",
+    "sendmail": "^1.2.0",
+    "time-js": "0.0.5",
     "xml2js": "^0.4.17"
   },
   "bin": {

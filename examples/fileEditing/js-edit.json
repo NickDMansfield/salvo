@@ -1,0 +1,25 @@
+{
+  "name": "Edits a JS file",
+  "operations": [
+    {
+      "name": "Edit JS file",
+      "iterations": 1,
+      "actions": [
+				{
+					"name": "Edits file",
+					"type": "update-file",
+					"values": {
+            "fileLocation": "editMe.js",
+            "fileType": "js",
+            "data": [
+              {
+                "path": "objProp.val2",
+                "value": "}>}datetimeRun{<{"
+              }
+            ]
+					}
+				}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+	"name": "Conditional Logic Example",
+	"operations": [
+		{
+			"name": "Set our initial variables",
+			"description": "You can describe the operation here",
+			"iterations": 1,
+			"run_at": "11:30 PM",
+			"actions":[
+				{
+					"name": "Set first var",
+					"type": "print-statement",
+					"values": {
+						"text": "heyyyyyyy"
+					}
+				}
+			]
+		}
+	]
+}

@@ -1,0 +1,35 @@
+{
+  "name": "Loop an op for each file in a directory",
+  "preloads": [],
+  "operations": [
+    {
+      "name": "Loop over files",
+      "iterations": {
+        "type": "for-each-file",
+        "iteratee": "fileName",
+        "directory": "dummyFiles",
+        "excludeFiles": ["excludeme.txt"]
+      },
+      "actions": [
+      {
+        "name": "Operation 2 Action 4",
+        "description": "Updates file",
+        "type": "update-file",
+        "values": {
+          "fileType": "text",
+          "dataOperations": [],
+          "data": "}>}fileName{<{",
+          "fileLocation": "}>}fileName{<{"
+        }
+      },
+      {
+        "name": "Log file info",
+        "type": "print-statement",
+        "values": {
+          "text": "full path:}>}fileName{<{ \r\n directory: }>}iteratedDir{<{ \r\n fileName: }>}iteratedFile{<{"
+        }
+      }
+      ]
+    }
+  ]
+}

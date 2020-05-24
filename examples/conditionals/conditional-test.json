@@ -1,0 +1,119 @@
+{
+	"name": "Conditional Logic Example",
+	"operations": [
+		{
+			"name": "Set our initial variables",
+			"description": "You can describe the operation here",
+			"iterations": 1,
+			"actions":[
+				{
+					"name": "Set first var",
+					"type": "set-var",
+					"values": {
+						"action": "set",
+						"target": "seven",
+						"data": 7
+					}
+				},
+				{
+					"name": "Set second var",
+					"type": "set-var",
+					"values": {
+						"action": "set",
+						"target": "george",
+						"data": "getting upset"
+					}
+				}
+			]
+		},
+		{
+			"name": "Run some conditional logic",
+			"iterations": 1,
+			"actions": [
+				{
+					"name": "Checking if George is upset",
+					"description": "Checks using a condition-formatted object",
+					"type": "print-statement",
+					"values": {
+						"text": "He's upset, Jerry!"
+					},
+					"conditions": [
+						{
+							"type": "does-var-equal",
+							"varName": "george",
+							"checkValue": "getting upset"
+						}
+					]
+				},
+				{
+					"name": "Checking if George is upset",
+					"description": "Checks using a condition-formatted object",
+					"type": "print-statement",
+					"values": {
+						"text": "He's calm, Jerry!"
+					},
+					"conditions": [
+						{
+							"type": "does-var-not-equal",
+							"varName": "george",
+							"checkValue": "getting upset"
+						}
+					]
+				},
+				{
+					"name": "Checking if George is upset",
+					"description": "Checks using a condition-formatted object",
+					"type": "print-statement",
+					"values": {
+						"text": "Seven still === 7"
+					},
+					"conditions": [
+						"}>}seven{<{ === 7"
+					]
+				},
+				{
+					"name": "Checking if George is upset",
+					"description": "Checks using a condition-formatted object",
+					"type": "print-statement",
+					"values": {
+						"text": "Seven ain't 7"
+					},
+					"conditions": [
+						"}>}seven{<{ !== 7"
+					]
+				},
+				{
+					"name": "Checking if George is upset and 7 === 7",
+					"description": "Checks using a condition-formatted object",
+					"type": "print-statement",
+					"values": {
+						"text": "Seven is 7 AND George is upset"
+					},
+					"conditions": [
+						"}>}seven{<{ === 7 && '}>}george{<{' === 'getting upset'"
+					]
+				},
+				{
+					"name": "George is calm and 7 is seven",
+					"description": "Checks using a condition-formatted object",
+					"type": "print-statement",
+					"values": {
+						"text": "He's calm AND 7 === 7, Elaine!"
+					},
+					"conditions": [
+						{
+							"type": "does-var-equal",
+							"varName": "george",
+							"checkValue": "calm"
+						},
+						{
+							"type": "does-var-equal",
+							"varName": "seven",
+							"checkValue": 7
+						}
+					]
+				}
+			]
+		}
+	]
+}
