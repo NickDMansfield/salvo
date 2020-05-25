@@ -25,6 +25,7 @@ const storedValues = {
   datetimeRun: new Date().valueOf(),
   curDir: process.cwd(),
   pathSlash,
+  ps: pathSlash,
   access_token:'TEMPORARY_TOKEN'
 };
 
