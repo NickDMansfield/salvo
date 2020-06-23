@@ -20,9 +20,13 @@ const encode = require('./capabilities/utils/encoding.js');
 let logLevel = 0;
 let showErrors = true;
 
+const pathSlash = process.cwd().indexOf("/") > 0 ? '/' : '\\';
 const storedValues = {
   datetimeRun: new Date().valueOf(),
-  curDir: process.cwd()
+  curDir: process.cwd(),
+  pathSlash,
+  ps: pathSlash,
+  access_token:'TEMPORARY_TOKEN'
 };
 
 const smartLog = (string, lvlRequired) => {
@@ -298,7 +302,7 @@ const runAction = (actions, callback, _runCount) => {
         }
 
         if (action.type === 'replace-file-text') {
-          return textEditor.editText(`${process.cwd()}/${action.values.fileLocation}`, action.values.replacements)
+          return textEditor.editText(`${process.cwd()}${pathSlash}${action.values.fileLocation}`, action.values.replacements)
           .then(() => {
             return actionPromise();
           });
@@ -325,7 +329,7 @@ const runAction = (actions, callback, _runCount) => {
             if (dataOperations.indexOf('jsonstringify') > -1) {
               writeData = JSON.stringify(writeData);
             }
-            return fs.writeFile(`${process.cwd()}/${action.values.fileLocation}`, writeData, () => {
+            return fs.writeFile(`${process.cwd()}${pathSlash}${action.values.fileLocation}`, writeData, () => {
               return resolve2();
             });
           })
@@ -338,17 +342,17 @@ const runAction = (actions, callback, _runCount) => {
             const dataOperations = _.map(action.values.dataOperations, op => {
               return op.toLowerCase();
             });
-            if (!fs.existsSync(`${process.cwd()}/${action.values.fileLocation}`)) {
+            if (!fs.existsSync(`${process.cwd()}${pathSlash}${action.values.fileLocation}`)) {
               if (!action.values.fileType || action.values.fileType === 'text') {
                 // We check this as auto-file creation only supports text
-                return fs.writeFile(`${process.cwd()}/${action.values.fileLocation}`, action.values.data, () => {
+                return fs.writeFile(`${process.cwd()}${pathSlash}${action.values.fileLocation}`, action.values.data, () => {
                   return resolve2();
                 });
               }
               showErr(`Exiting this step early, as the file does not exist at location : \r\n ${process.cwd()}/${action.values.fileLocation}`);
             }
             return new Promise(resolveRead => {
-              return fs.readFile(`${process.cwd()}/${action.values.fileLocation}`, 'utf8', (err, _readData) => {
+              return fs.readFile(`${process.cwd()}${pathSlash}${action.values.fileLocation}`, 'utf8', (err, _readData) => {
                 if (err) {
                   return false;
                 }
@@ -397,7 +401,7 @@ const runAction = (actions, callback, _runCount) => {
                 resolve2();
               }
               smartLog(`DATA TO  WRITE \r\n ${writeData}`, 4);
-              return fs.writeFile(`${process.cwd()}/${action.values.fileLocation}`, writeData, () => {
+              return fs.writeFile(`${process.cwd()}${pathSlash}${action.values.fileLocation}`, writeData, () => {
                 return resolve2();
               });
             });
@@ -487,7 +491,7 @@ if (!program.target) {
   process.exit();
 }
 
-const salvoScript = require(`${process.cwd()}/${program.target}`);
+const salvoScript = require(`${process.cwd()}${pathSlash}${program.target}`);
 // Requires format -t './filename'
 smartLog(`Beginning salvo ${salvoScript.name}`, 2);
 return new Promise(preloadsLoaded => {
@@ -499,7 +503,7 @@ return new Promise(preloadsLoaded => {
   }
   return Promise.map(salvoScript.preloads, preloadFile => {
     // Loads each pre-salvo file.  Format requires './filename'
-    return require(`${process.cwd()}/${preloadFile}`);
+    return require(`${process.cwd()}${pathSlash}${preloadFile}`);
   })
   .then(preloads => {
     return preloadsLoaded(preloads);
@@ -540,7 +544,7 @@ return new Promise(preloadsLoaded => {
         if (typeof operation.iterations === 'object') {
           if (operation.iterations.type === 'for-each-file') {
           // Loop over each item in a directory
-            return fs.readdir(process.cwd() + '/' + operation.iterations.directory, (err, _items) => {
+            return fs.readdir(process.cwd() + pathSlash + operation.iterations.directory, (err, _items) => {
               let items = _items;
               if (operation.iterations.excludeFiles && Array.isArray(operation.iterations.excludeFiles)) {
                 items = _.filter(_items, item => {
@@ -550,7 +554,7 @@ return new Promise(preloadsLoaded => {
               iterationOptions.iterations = items.length;
               iterationOptions.type = operation.iterations.type;
               iterationOptions.iteratorObjects = _.map(items, item => {
-                return { filePath: operation.iterations.directory + '/' + item,
+                return { filePath: operation.iterations.directory + pathSlash + item,
                   file: item,
                   directory: operation.iterations.directory
                 };
