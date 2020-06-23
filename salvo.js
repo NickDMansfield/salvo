@@ -307,6 +307,17 @@ const runAction = (actions, callback, _runCount) => {
             return actionPromise();
           });
         }
+        if (action.type = 'clone-file') {
+          return textEditor.getFileText(textEditor.fixSlashes(`${process.cwd()}${storedValues.ps}${action.values.fileLocation}`, storedValues.ps), (err, _parsedText) => {
+            if (err) {
+              showErr(err);
+              return actionPromise();
+            }
+            return fs.writeFile(`${process.cwd()}/${action.values.outputFileLocation}`,_parsedText,()=> {
+              return actionPromise();
+            });
+          });
+        }
 
         if (action.type === 'send-email') {
           return email.sendEmail(action.values.accountProperties, action.values.emailProperties, actionPromise)

@@ -1,0 +1,26 @@
+{
+    "name": "Clone a file",
+    "logLevel": 5,
+    "operations": [
+        {
+            "name": "Clone file",
+            "post_delay_loop": 5000,
+            "actions": [
+                {
+                    "type": "clone-file",
+                    "values": {
+                        "fileLocation": "file-to-copy.text",
+                        "outputFileLocation": "cloned-file.text"
+                    }
+                },
+                {
+                    "type": "clone-file",
+                    "values": {
+                        "fileLocation": "nested-files/nested-file.text",
+                        "outputFileLocation": "nested-files/cloned-nested-file.text"
+                    }
+                }
+            ]
+        }
+    ]
+}

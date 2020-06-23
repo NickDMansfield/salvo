@@ -20,20 +20,20 @@
   },
   "homepage": "https://github.com/NickDMansfield/salvo#readme",
   "dependencies": {
-    "bluebird": "^3.5.1",
-    "commander": "^2.9.0",
+    "bluebird": "^3.7.2",
+    "commander": "^2.20.3",
     "json-query": "^2.2.2",
-    "lodash": "^4.17.4",
+    "lodash": "^4.17.15",
     "node-cmd": "^3.0.0",
     "node-rest-client": "^3.1.0",
     "vow-xamel": "0.0.4",
     "xamel": "^0.3.1",
-    "nodemailer": "^4.0.1",
+    "nodemailer": "^4.7.0",
     "replace-in-file": "^2.5.4",
     "request": "^2.81.0",
     "sendmail": "^1.2.0",
     "time-js": "0.0.5",
-    "xml2js": "^0.4.17"
+    "xml2js": "^0.4.23"
   },
   "bin": {
     "salvo": "salvo.js"
