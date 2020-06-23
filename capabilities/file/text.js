@@ -3,12 +3,12 @@ const _ = require('lodash');
 const fs = require('fs');
 const Promise = require('bluebird');
 
-const getFileText = (fileLocation => {
-  return fs.readFile(`${process.cwd()}/${fileLocation}`, 'utf8', (err, readData) => {
+const getFileText = ((fileLocation, cb) => {
+  return fs.readFile(`${fileLocation}`, 'utf8', (err, readData) => {
     if (err) {
-      return false;
+      return cb(err);
     }
-    return readData;
+    return cb(null, readData);
   });
 });
 
@@ -51,8 +51,13 @@ const editText = ((fileLocation, replacements) => {
   });
 });
 
+const fixSlashes = function(str, slash) {
+  return str.replace('/', slash).replace('\\', slash);
+}
+
 module.exports = {
   getFileText,
   editText,
-  replaceText
+  replaceText,
+  fixSlashes
 };
