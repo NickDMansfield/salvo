@@ -10,7 +10,13 @@
                     "type": "clone-file",
                     "values": {
                         "fileLocation": "file-to-copy.text",
-                        "outputFileLocation": "cloned-file.text"
+                        "outputFileLocation": "cloned-file.text",
+                        "replacements": [
+                            {
+                                "searchString": "___VAR__1___",
+                                "replaceString": "REPLACED VAR :0 :0"
+                            }
+                        ]
                     }
                 },
                 {

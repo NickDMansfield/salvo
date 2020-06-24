@@ -308,7 +308,7 @@ const runAction = (actions, callback, _runCount) => {
           });
         }
         if (action.type = 'clone-file') {
-          return textEditor.getFileText(textEditor.fixSlashes(`${process.cwd()}${storedValues.ps}${action.values.fileLocation}`, storedValues.ps), (err, _parsedText) => {
+          return textEditor.getFileText(textEditor.fixSlashes(`${process.cwd()}${storedValues.ps}${action.values.fileLocation}`,  storedValues.ps), action.values.replacements, (err, _parsedText) => {
             if (err) {
               showErr(err);
               return actionPromise();

@@ -3,10 +3,14 @@ const _ = require('lodash');
 const fs = require('fs');
 const Promise = require('bluebird');
 
-const getFileText = ((fileLocation, cb) => {
+const getFileText = ((fileLocation, replacements, cb) => {
   return fs.readFile(`${fileLocation}`, 'utf8', (err, readData) => {
     if (err) {
       return cb(err);
+    }
+    if (replacements && Array.isArray(replacements)) {
+      // Only do this if there is a replacements object and it isn't parsing the cb instead
+      return cb(null, replaceText(readData, replacements));
     }
     return cb(null, readData);
   });
