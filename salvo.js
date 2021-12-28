@@ -364,7 +364,7 @@ const runAction = (actions, callback, _runCount) => {
             return actionPromise();
           });
       }
-      if ((action.type = "clone-file")) {
+      if (action.type === "clone-file") {
         return textEditor.getFileText(
           textEditor.fixSlashes(
             `${process.cwd()}${storedValues.ps}${action.values.fileLocation}`,
@@ -388,7 +388,6 @@ const runAction = (actions, callback, _runCount) => {
       }
 
       if (action.type === "send-email") {
-        console.log("fuck you");
         return email.sendEmail(
           action.values.accountProperties,
           action.values.emailProperties,
@@ -617,7 +616,7 @@ return new Promise((preloadsLoaded) => {
   if (salvoScript.logLevel) {
     logLevel = salvoScript.logLevel;
   }
-  if (!salvoScript.preloads) {
+  if (!salvoScript.preloads || salvoScript.preloads.length < 1) {
     return preloadsLoaded([]);
   }
   return Promise.map(salvoScript.preloads, (preloadFile) => {
@@ -630,7 +629,7 @@ return new Promise((preloadsLoaded) => {
   let loadedFiles = _loadedFiles;
   smartLog(`Loaded values: ${JSON.stringify(loadedFiles)}`, 2);
   return new Promise((resolve) => {
-    if (!loadedFiles) {
+    if (!loadedFiles || loadedFiles.length < 1) {
       // To avoid loop errors, we set it to an empty array
       loadedFiles = [];
     }
