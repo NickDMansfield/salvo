@@ -1,0 +1,27 @@
+{
+	"name": "Sends a message to Slack",
+	"preloads": [],
+	"operations": [
+		{
+			"name": "Sends a message to slack",
+			"description": "You can describe the operation here",
+			"pre_delay_op": 0,
+			"pre_delay_loop": 500,
+			"post_delay_op": 0,
+			"post_delay_loop": 500,
+			"iterations": 1,
+			"actions": [
+        {
+          "name": "Send message",
+          "pre_delay": 1000,
+          "post_delay": 1000,
+          "type": "send-slack-message",
+          "values": {
+            "webhookUrl": "http://your/slack/url",
+            "messageText": "salvo test"
+          }
+        }
+			]
+		}
+	]
+}

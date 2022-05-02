@@ -1,40 +1,41 @@
 #! /usr/bin/env node
 
-"use strict";
+'use strict';
 
-const program = require("commander");
-const _ = require("lodash");
-const fs = require("fs");
-const cmd = require("node-cmd");
-const Promise = require("bluebird");
-const Client = require("node-rest-client").Client;
+const program = require('commander');
+const _ = require('lodash');
+const fs = require('fs');
+const cmd = require('node-cmd');
+const Promise = require('bluebird');
+const Client = require('node-rest-client').Client;
 const rClient = new Client();
-const util = require("util");
-const xml2js = require("xml2js");
-const email = require("./capabilities/email/email.js");
-const textEditor = require("./capabilities/file/text.js");
-const request = require("request");
-const Time = require("time-js");
-const encode = require("./capabilities/utils/encoding.js");
+const util = require('util');
+const xml2js = require('xml2js');
+const email = require('./capabilities/email/email.js');
+const textEditor = require('./capabilities/file/text.js');
+const request = require('request');
+const Time = require('time-js');
+const encode = require('./capabilities/utils/encoding.js');
+const slackTools = require('./capabilities/slack/test-slack.js');
 
 let logLevel = 0;
-let showErrors = true;
+const showErrors = true;
 
-const pathSlash = process.cwd().indexOf("/") > 0 ? "/" : "\\";
+const pathSlash = process.cwd().indexOf('/') > 0 ? '/' : '\\';
 const storedValues = {
   datetimeRun: new Date().valueOf(),
   curDir: process.cwd(),
   pathSlash,
   ps: pathSlash,
-  access_token: "TEMPORARY_TOKEN",
+  access_token: 'TEMPORARY_TOKEN',
 };
 
 const smartTime = function (millisecondsString) {
-  if (millisecondsString && millisecondsString.toString().indexOf("//") >= 0) {
-    let floor = millisecondsString.toString().split("//")[0];
-    let ceil = millisecondsString.toString().split("//")[1].replace("//", "");
-    var time = Number(floor) + Number((ceil - floor) * Math.random());
-    //console.log(time);
+  if (millisecondsString && millisecondsString.toString().indexOf('//') >= 0) {
+    const floor = millisecondsString.toString().split('//')[0];
+    const ceil = millisecondsString.toString().split('//')[1].replace('//', '');
+    const time = Number(floor) + Number((ceil - floor) * Math.random());
+    // console.log(time);
     return time;
   }
   return millisecondsString;
@@ -46,7 +47,7 @@ const smartLog = (string, lvlRequired) => {
   }
 };
 
-const showErr = (string) => {
+const showErr = string => {
   if (showErrors) {
     console.log(string);
   }
@@ -54,45 +55,45 @@ const showErr = (string) => {
 
 const extractData = (extractionData, method, extractionModifiers) => {
   let extractedData = null;
-  if (method === "string") {
+  if (method === 'string') {
     extractedData = extractionData;
   }
-  if (method === "object") {
+  if (method === 'object') {
     // This allows you to use nested paths via arrays
     // Example
     // _.get({some: {'nested.field': 123}}, ['some', 'nested.field']);
     // => 123
     extractedData =
-      extractionModifiers.source === "$$all$$"
-        ? extractionData
-        : _.get(extractionData, extractionModifiers.source);
+      extractionModifiers.source === '$$all$$' ?
+        extractionData :
+        _.get(extractionData, extractionModifiers.source);
   }
-  if (method === "array") {
+  if (method === 'array') {
     extractedData =
-      extractionModifiers.source === "$$all$$"
-        ? extractionData
-        : extractionData[extractionModifiers.source];
+      extractionModifiers.source === '$$all$$' ?
+        extractionData :
+        extractionData[extractionModifiers.source];
   }
-  if (method === "regex") {
+  if (method === 'regex') {
     // There is an assumption that the first index will just be the match, and everything else is the capture
     const capRegex = new RegExp(extractionModifiers.source);
     const capturedRegex = capRegex.exec(extractionData);
     extractedData = capturedRegex;
     if (capturedRegex) {
-      extractedData = extractionModifiers.regexIndex
-        ? capturedRegex[extractionModifiers.regexIndex]
-        : capturedRegex;
+      extractedData = extractionModifiers.regexIndex ?
+        capturedRegex[extractionModifiers.regexIndex] :
+        capturedRegex;
     }
   }
   if (extractionModifiers.forceType) {
     const forceType = extractionModifiers.forceType;
-    if (forceType.toLowerCase() === "number") {
+    if (forceType.toLowerCase() === 'number') {
       return Number(extractedData);
     }
-    if (forceType.toLowerCase() === "string") {
+    if (forceType.toLowerCase() === 'string') {
       return extractedData.toString();
     }
-    if (forceType.toLowerCase() === "jsonStringify") {
+    if (forceType.toLowerCase() === 'jsonStringify') {
       return JSON.stringify(extractedData, 0, 2);
     }
   }
@@ -102,12 +103,12 @@ const extractData = (extractionData, method, extractionModifiers) => {
 const captureData = (action, respSet) => {
   smartLog(`RESPSET: ${util.inspect(respSet, 0, 2)}`, 5);
   const data =
-    (typeof respSet).toLowerCase() === "object" ? respSet[0] : respSet;
+    (typeof respSet).toLowerCase() === 'object' ? respSet[0] : respSet;
   if (!action.capture) {
     // Terminate early if there is no capture data
     return false;
   }
-  if (!Array.isArray(action.capture) && typeof action.capture === "object") {
+  if (!Array.isArray(action.capture) && typeof action.capture === 'object') {
     // If a single object is passed in, we wrap it in an array for iterator-safe parsing
     action.capture = [action.capture];
   }
@@ -121,7 +122,7 @@ const captureData = (action, respSet) => {
     );
 
     // Now that the data is set, we save it
-    if (captureItem.captureType === "set") {
+    if (captureItem.captureType === 'set') {
       if (captureItem.values) {
         // this is used when you want to save multiple values to the same stored object
         const objectWithProperties = {};
@@ -135,7 +136,7 @@ const captureData = (action, respSet) => {
       }
       storedValues[captureItem.target] = foundData;
     }
-    if (captureItem.captureType === "push") {
+    if (captureItem.captureType === 'push') {
       if (!storedValues[captureItem.target]) {
         storedValues[captureItem.target] = [];
       }
@@ -147,34 +148,34 @@ const captureData = (action, respSet) => {
 };
 
 const updateVar = (path, data, action) => {
-  if (action === "increment") {
+  if (action === 'increment') {
     if (
-      typeof storedValues[path] === "string" ||
-      typeof storedValues[path] === "undefined"
+      typeof storedValues[path] === 'string' ||
+      typeof storedValues[path] === 'undefined'
     ) {
       storedValues[path] =
-        (storedValues[path] ? storedValues[path].toString() : "") + data;
+        (storedValues[path] ? storedValues[path].toString() : '') + data;
     } else {
       storedValues[path] = Number(storedValues[path]) + data;
     }
   }
 
-  if (action === "increment-number") {
+  if (action === 'increment-number') {
     storedValues[path] = Number(storedValues[path] || 0) + Number(data);
   }
 
-  if (action === "push") {
+  if (action === 'push') {
     if (!storedValues[path]) {
       storedValues[path] = [];
     }
     storedValues[path].push(data);
   }
-  if (action === "set") {
+  if (action === 'set') {
     storedValues[path] = data;
   }
 };
 
-const makeRestCall = (callProps) => {
+const makeRestCall = callProps => {
   const requestArgs = {
     data: callProps.data, // data passed to REST method (only useful in POST, PUT or PATCH methods)
     path: callProps.path, // path substitution var
@@ -187,7 +188,7 @@ const makeRestCall = (callProps) => {
     responseConfig: callProps.responseConfig || { timeout: 300000 },
   };
 
-  return new Promise((callFinished) => {
+  return new Promise(callFinished => {
     if (callProps.attachment) {
       const formData = {};
       formData[callProps.attachment.fileName] = fs.createReadStream(
@@ -207,7 +208,7 @@ const makeRestCall = (callProps) => {
         }
       );
     }
-    if (callProps.method.toLowerCase() === "get") {
+    if (callProps.method.toLowerCase() === 'get') {
       return rClient.get(callProps.target, requestArgs, (data, response) => {
         //    smartLog(`CALL DATA get= ${data}`);
         return callFinished([data, response]);
@@ -221,24 +222,24 @@ const makeRestCall = (callProps) => {
         return callFinished([data, response]);
       }
     );
-    req.on("error", (err) => {
+    req.on('error', err => {
       showErr(`Request sending error: ${err}`);
     });
     return req;
-  }).then((responseSet) => {
+  }).then(responseSet => {
     return responseSet;
   });
 };
 
-const areConditionsMet = (conditionsArr) => {
+const areConditionsMet = conditionsArr => {
   for (const condition of conditionsArr) {
     if (condition.type) {
-      if (condition.type === "does-var-equal") {
+      if (condition.type === 'does-var-equal') {
         if (storedValues[condition.varName] !== condition.checkValue) {
           return false;
         }
       }
-      if (condition.type === "does-var-not-equal") {
+      if (condition.type === 'does-var-not-equal') {
         if (storedValues[condition.varName] === condition.checkValue) {
           return false;
         }
@@ -252,33 +253,33 @@ const areConditionsMet = (conditionsArr) => {
   return true;
 };
 
-const substituteValues = (_object) => {
+const substituteValues = _object => {
   // We make a copy of it, as doing otherwise prevents iterations from being substituted with a single operation
   const object = JSON.parse(JSON.stringify(_object));
-  for (let objProp in object) {
-    if ((typeof object[objProp]).toLowerCase() === "object") {
+  for (const objProp in object) {
+    if ((typeof object[objProp]).toLowerCase() === 'object') {
       object[objProp] = substituteValues(object[objProp]);
-    } else if (typeof object[objProp] === "string") {
+    } else if (typeof object[objProp] === 'string') {
       const valKeys = Object.keys(storedValues);
       for (let zz = 0; zz < valKeys.length; ++zz) {
         const matchWord = valKeys[zz];
         const storedValue =
-          typeof storedValues[matchWord] === "object"
-            ? JSON.stringify(storedValues[matchWord])
-            : storedValues[matchWord];
+          typeof storedValues[matchWord] === 'object' ?
+            JSON.stringify(storedValues[matchWord]) :
+            storedValues[matchWord];
         // Handle replacements of text with variables
-        let wIndex = object[objProp].indexOf("}>}" + matchWord + "{<{");
+        let wIndex = object[objProp].indexOf(`}>}${matchWord}{<{`);
         while (wIndex != -1) {
           //  smartLog(`match found in string ${object[objProp]} \r\n for word ${matchWord}`);
           object[objProp] = object[objProp]
-            .split("}>}" + matchWord + "{<{")
+            .split(`}>}${matchWord}{<{`)
             .join(storedValue);
           //  smartLog(`replaced string ${object[objProp]} \r\n for word ${matchWord}`);
-          wIndex = object[objProp].indexOf("}>}" + matchWord + "{<{");
+          wIndex = object[objProp].indexOf(`}>}${matchWord}{<{`);
         }
 
-        let eStartIndex = object[objProp].indexOf("}b64}");
-        let eEndIndex = object[objProp].indexOf("{b64{");
+        let eStartIndex = object[objProp].indexOf('}b64}');
+        let eEndIndex = object[objProp].indexOf('{b64{');
 
         while (eStartIndex !== -1 && eEndIndex !== -1) {
           //  smartLog(`match found in string ${object[objProp]} \r\n for word ${matchWord}`);
@@ -289,13 +290,13 @@ const substituteValues = (_object) => {
 
           object[objProp] = chunk1 + encode.base64(chunk2) + chunk3;
           //  smartLog(`replaced string ${object[objProp]} \r\n for word ${matchWord}`);
-          eStartIndex = object[objProp].indexOf("}b64}");
-          eEndIndex = object[objProp].indexOf("{b64{");
+          eStartIndex = object[objProp].indexOf('}b64}');
+          eEndIndex = object[objProp].indexOf('{b64{');
         }
       }
     }
   }
-  //smartLog(`returning: ${JSON.stringify(object)}`);
+  // smartLog(`returning: ${JSON.stringify(object)}`);
   return object;
 };
 
@@ -305,29 +306,29 @@ const runAction = (actions, callback, _runCount) => {
   const backupAction = JSON.parse(JSON.stringify(action));
   action = substituteValues(action);
   smartLog(`action res:${JSON.stringify(action)} `, 2);
-  return new Promise((preDelay) => {
-    setTimeout(function () {
+  return new Promise(preDelay => {
+    setTimeout(() => {
       //  smartLog(`Pre-action delay finished for ${action.name}`);
       // Execute action depending on type
       preDelay();
     }, smartTime(action.pre_delay) || 0);
   }).then(() => {
-    return new Promise((actionPromise) => {
+    return new Promise(actionPromise => {
       if (action.conditions) {
         if (!areConditionsMet(action.conditions)) {
           // Terminate early if conditions are unmet
           return actionPromise();
         }
       }
-      if (action.type === "terminal") {
+      if (action.type === 'terminal') {
         let terminalCommand = action.values.text;
         if (action.values.arguments && action.values.arguments.length > 0) {
           // Check for and assign arguments
           for (let zz = 0; zz < action.values.arguments.length; ++zz) {
             terminalCommand +=
-              " " +
-              action.values.arguments[zz].key +
-              action.values.arguments[zz].value;
+              ` ${
+                action.values.arguments[zz].key
+              }${action.values.arguments[zz].value}`;
           }
         }
         smartLog(`TERMINAL COMMAND: ${terminalCommand}`, 3);
@@ -340,7 +341,12 @@ const runAction = (actions, callback, _runCount) => {
         });
       }
 
-      if (action.type === "set-var") {
+      if (action.type === 'send-slack-message') {
+        slackTools.sendSlackMessageViaWebHook(action.values.webhookUrl, action.values.messageText);
+        return actionPromise();
+      }
+
+      if (action.type === 'set-var') {
         updateVar(
           action.values.target,
           action.values.data,
@@ -349,12 +355,12 @@ const runAction = (actions, callback, _runCount) => {
         return actionPromise();
       }
 
-      if (action.type === "print-statement") {
+      if (action.type === 'print-statement') {
         console.log(action.values.text);
         return actionPromise();
       }
 
-      if (action.type === "replace-file-text") {
+      if (action.type === 'replace-file-text') {
         return textEditor
           .editText(
             `${process.cwd()}${pathSlash}${action.values.fileLocation}`,
@@ -364,7 +370,7 @@ const runAction = (actions, callback, _runCount) => {
             return actionPromise();
           });
       }
-      if (action.type === "clone-file") {
+      if (action.type === 'clone-file') {
         return textEditor.getFileText(
           textEditor.fixSlashes(
             `${process.cwd()}${storedValues.ps}${action.values.fileLocation}`,
@@ -387,7 +393,7 @@ const runAction = (actions, callback, _runCount) => {
         );
       }
 
-      if (action.type === "send-email") {
+      if (action.type === 'send-email') {
         return email.sendEmail(
           action.values.accountProperties,
           action.values.emailProperties,
@@ -395,20 +401,20 @@ const runAction = (actions, callback, _runCount) => {
         );
       }
 
-      if (action.type === "web-call") {
-        return makeRestCall(action.values).then((resp) => {
+      if (action.type === 'web-call') {
+        return makeRestCall(action.values).then(resp => {
           captureData(action, resp);
           return actionPromise();
         });
       }
-      if (action.type === "make-file") {
-        return new Promise((resolve2) => {
+      if (action.type === 'make-file') {
+        return new Promise(resolve2 => {
           let writeData = action.values.data;
-          const dataOperations = _.map(action.values.dataOperations, (op) => {
+          const dataOperations = _.map(action.values.dataOperations, op => {
             return op.toLowerCase();
           });
 
-          if (dataOperations.indexOf("jsonstringify") > -1) {
+          if (dataOperations.indexOf('jsonstringify') > -1) {
             writeData = JSON.stringify(writeData);
           }
           return fs.writeFile(
@@ -422,9 +428,9 @@ const runAction = (actions, callback, _runCount) => {
           return actionPromise();
         });
       }
-      if (action.type === "update-file") {
-        return new Promise((resolve2) => {
-          const dataOperations = _.map(action.values.dataOperations, (op) => {
+      if (action.type === 'update-file') {
+        return new Promise(resolve2 => {
+          const dataOperations = _.map(action.values.dataOperations, op => {
             return op.toLowerCase();
           });
           if (
@@ -432,7 +438,7 @@ const runAction = (actions, callback, _runCount) => {
               `${process.cwd()}${pathSlash}${action.values.fileLocation}`
             )
           ) {
-            if (!action.values.fileType || action.values.fileType === "text") {
+            if (!action.values.fileType || action.values.fileType === 'text') {
               // We check this as auto-file creation only supports text
               return fs.writeFile(
                 `${process.cwd()}${pathSlash}${action.values.fileLocation}`,
@@ -448,22 +454,22 @@ const runAction = (actions, callback, _runCount) => {
               }`
             );
           }
-          return new Promise((resolveRead) => {
+          return new Promise(resolveRead => {
             return fs.readFile(
               `${process.cwd()}${pathSlash}${action.values.fileLocation}`,
-              "utf8",
+              'utf8',
               (err, _readData) => {
                 if (err) {
                   return false;
                 }
                 const readData = _readData;
-                let writeData = readData || "";
+                let writeData = readData || '';
                 smartLog(readData, 4);
-                if (dataOperations.indexOf("jsonstringify") > -1) {
+                if (dataOperations.indexOf('jsonstringify') > -1) {
                   writeData = JSON.stringify(readData);
                 }
 
-                if (action.values.fileType.toLowerCase() === "xml") {
+                if (action.values.fileType.toLowerCase() === 'xml') {
                   const xmlBuilder = new xml2js.Builder();
                   const xmlParser = new xml2js.Parser(
                     action.values.parseParameters || {}
@@ -481,7 +487,7 @@ const runAction = (actions, callback, _runCount) => {
                   });
                 }
 
-                if (action.values.fileType.toLowerCase() === "json") {
+                if (action.values.fileType.toLowerCase() === 'json') {
                   const readDataObj = JSON.parse(readData);
                   for (let zz = 0; zz < action.values.data.length; ++zz) {
                     const dataToInsert = action.values.data[zz];
@@ -492,7 +498,7 @@ const runAction = (actions, callback, _runCount) => {
                 // Assumes text if no other type is supplied
                 if (
                   action.values.dataOperations &&
-                  action.values.dataOperations.indexOf("append") >= 0
+                  action.values.dataOperations.indexOf('append') >= 0
                 ) {
                   writeData += action.values.data;
                 } else {
@@ -501,7 +507,7 @@ const runAction = (actions, callback, _runCount) => {
                 return resolveRead(writeData);
               }
             );
-          }).then((writeData) => {
+          }).then(writeData => {
             if (!writeData) {
               resolve2();
             }
@@ -520,14 +526,13 @@ const runAction = (actions, callback, _runCount) => {
       }
       return actionPromise();
     }).then(() => {
-      setTimeout(function () {
+      setTimeout(() => {
         //  smartLog(`Post-delay finished for ${action.name}`);
         if (runCount < actions.length - 1) {
           actions[runCount] = backupAction;
           return runAction(actions, callback, runCount + 1);
-        } else {
-          return callback();
         }
+        return callback();
       }, smartTime(action.post_delay) || 0);
     });
   });
@@ -542,14 +547,14 @@ const runOperation = (_operation, callback, _runCount, iterationOptions) => {
   let timeout = 0;
   if (operation.run_at) {
     const nowTime = Number(new Date());
-    const runTime = new Time(operation.run_at).isValid()
-      ? Number(new Time(operation.run_at).nextDate())
-      : new Date(operation.run_at);
+    const runTime = new Time(operation.run_at).isValid() ?
+      Number(new Time(operation.run_at).nextDate()) :
+      new Date(operation.run_at);
     if (runTime > nowTime) {
       timeout = runTime - nowTime;
     }
   }
-  if (iterationOptions.type === "do-while") {
+  if (iterationOptions.type === 'do-while') {
     if (areConditionsMet(iterationOptions.conditions)) {
       runCount = 0;
     } else {
@@ -558,7 +563,7 @@ const runOperation = (_operation, callback, _runCount, iterationOptions) => {
   }
   if (runCount >= iterationOptions.iterations) {
     // Finishes the operation loop set for the current op
-    return setTimeout(function () {
+    return setTimeout(() => {
       //  smartLog(`Finished operation delay for ${operation.name}`);
       callback();
     }, smartTime(operation.post_delay_op) || 0);
@@ -567,7 +572,7 @@ const runOperation = (_operation, callback, _runCount, iterationOptions) => {
     // Store the current iteratee as a variable to be used in the subsequent actions
     storedValues[iterationOptions.iteratee] =
       iterationOptions.iteratorObjects[runCount];
-    if (iterationOptions.type === "for-each-file") {
+    if (iterationOptions.type === 'for-each-file') {
       storedValues.iteratedFile =
         iterationOptions.iteratorObjects[runCount].file;
       storedValues[iterationOptions.iteratee] =
@@ -576,12 +581,12 @@ const runOperation = (_operation, callback, _runCount, iterationOptions) => {
         iterationOptions.iteratorObjects[runCount].directory;
     }
   }
-  setTimeout(function () {
+  setTimeout(() => {
     // smartLog(`Finished pre-loop delay for ${operation.name}`)
-    return new Promise((iterationFinished) => {
+    return new Promise(iterationFinished => {
       runAction(operation.actions, iterationFinished, 0);
     }).then(() => {
-      setTimeout(function () {
+      setTimeout(() => {
         //  smartLog(`Finished post delay(loop) for operation ${operation.name}`);
         if (runCount < iterationOptions.iterations) {
           return runOperation(
@@ -598,13 +603,13 @@ const runOperation = (_operation, callback, _runCount, iterationOptions) => {
 };
 
 program
-  .version("0.0.1")
-  .option("-t, --target <target>", "Define target")
+  .version('0.0.1')
+  .option('-t, --target <target>', 'Define target')
   .parse(process.argv);
 
 if (!program.target) {
   showErr(
-    "No salvo file specified.  Please provide a relative file path with the -t parameter"
+    'No salvo file specified.  Please provide a relative file path with the -t parameter'
   );
   process.exit();
 }
@@ -612,30 +617,30 @@ if (!program.target) {
 const salvoScript = require(`${process.cwd()}${pathSlash}${program.target}`);
 // Requires format -t './filename'
 smartLog(`Beginning salvo ${salvoScript.name}`, 2);
-return new Promise((preloadsLoaded) => {
+return new Promise(preloadsLoaded => {
   if (salvoScript.logLevel) {
     logLevel = salvoScript.logLevel;
   }
   if (!salvoScript.preloads || salvoScript.preloads.length < 1) {
     return preloadsLoaded([]);
   }
-  return Promise.map(salvoScript.preloads, (preloadFile) => {
+  return Promise.map(salvoScript.preloads, preloadFile => {
     // Loads each pre-salvo file.  Format requires './filename'
     return require(`${process.cwd()}${pathSlash}${preloadFile}`);
-  }).then((preloads) => {
+  }).then(preloads => {
     return preloadsLoaded(preloads);
   });
-}).then((_loadedFiles) => {
+}).then(_loadedFiles => {
   let loadedFiles = _loadedFiles;
   smartLog(`Loaded values: ${JSON.stringify(loadedFiles)}`, 2);
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     if (!loadedFiles || loadedFiles.length < 1) {
       // To avoid loop errors, we set it to an empty array
       loadedFiles = [];
     }
     for (const loadedData of loadedFiles) {
       let dataObject = loadedData;
-      if (loadedData.hasOwnProperty("default")) {
+      if (loadedData.hasOwnProperty('default')) {
         // File was a JS file so properties are accessed through default property
         dataObject = loadedData.default;
       }
@@ -647,17 +652,17 @@ return new Promise((preloadsLoaded) => {
     resolve();
   }).then(() => {
     // Preload values are loaded in and now we can begin operations
-    return Promise.each(salvoScript.operations, (_operation) => {
+    return Promise.each(salvoScript.operations, _operation => {
       // Handle each operation in turn
       let operation = JSON.parse(JSON.stringify(_operation));
       operation = substituteValues(operation);
       smartLog(`Beginning operation ${operation.name}`, 2);
       smartLog(`Operation Properties: ${JSON.stringify(operation)}`, 3);
-      return new Promise((opResolve) => {
+      return new Promise(opResolve => {
         // Make a promise to handle pre-operation timing delay in each object
         const iterationOptions = { iterations: operation.iterations };
-        if (typeof operation.iterations === "object") {
-          if (operation.iterations.type === "for-each-file") {
+        if (typeof operation.iterations === 'object') {
+          if (operation.iterations.type === 'for-each-file') {
             // Loop over each item in a directory
             return fs.readdir(
               process.cwd() + pathSlash + operation.iterations.directory,
@@ -667,13 +672,13 @@ return new Promise((preloadsLoaded) => {
                   operation.iterations.excludeFiles &&
                   Array.isArray(operation.iterations.excludeFiles)
                 ) {
-                  items = _.filter(_items, (item) => {
+                  items = _.filter(_items, item => {
                     return operation.iterations.excludeFiles.indexOf(item) < 0;
                   });
                 }
                 iterationOptions.iterations = items.length;
                 iterationOptions.type = operation.iterations.type;
-                iterationOptions.iteratorObjects = _.map(items, (item) => {
+                iterationOptions.iteratorObjects = _.map(items, item => {
                   return {
                     filePath: operation.iterations.directory + pathSlash + item,
                     file: item,
@@ -691,17 +696,17 @@ return new Promise((preloadsLoaded) => {
             );
           }
 
-          if (operation.iterations.type === "for-each-in-array") {
+          if (operation.iterations.type === 'for-each-in-array') {
             // Loop over each item in a directory
             iterationOptions.iterations =
-              typeof operation.iterations.sourceArray === "string"
-                ? JSON.parse(operation.iterations.sourceArray).length
-                : operation.iterations.sourceArray.length;
+              typeof operation.iterations.sourceArray === 'string' ?
+                JSON.parse(operation.iterations.sourceArray).length :
+                operation.iterations.sourceArray.length;
             iterationOptions.type = operation.iterations.type;
             iterationOptions.iteratorObjects =
-              typeof operation.iterations.sourceArray === "string"
-                ? JSON.parse(operation.iterations.sourceArray)
-                : operation.iterations.sourceArray;
+              typeof operation.iterations.sourceArray === 'string' ?
+                JSON.parse(operation.iterations.sourceArray) :
+                operation.iterations.sourceArray;
             iterationOptions.iteratee = operation.iterations.iteratee;
             setTimeout(() => {
               // The following code executes after the pre-operation delay
@@ -711,7 +716,7 @@ return new Promise((preloadsLoaded) => {
             }, smartTime(operation.pre_delay_op) || 0);
           }
 
-          if (operation.iterations.type === "do-while") {
+          if (operation.iterations.type === 'do-while') {
             // Loop over each item in a directory
             iterationOptions.iterations = 1;
             iterationOptions.type = operation.iterations.type;
@@ -734,7 +739,7 @@ return new Promise((preloadsLoaded) => {
         }
       });
     }).then(() => {
-      smartLog("All ops finished", 1);
+      smartLog('All ops finished', 1);
       process.exit();
     });
   });
