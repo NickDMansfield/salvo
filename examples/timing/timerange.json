@@ -1,0 +1,62 @@
+{
+    "name": "time range test",
+    "operations": [
+        {
+          "name": "setup op",
+          "iterations": 1,
+          "actions": [
+            {
+              "name": "set var",
+              "type": "print-statement",
+              "values": {
+                "text": "hi"
+              }
+            }
+          ],
+          "post_delay_op": "1000//5000"
+        },
+        {
+          "name": "setup op",
+          "iterations": 1,
+          "actions": [
+            {
+              "name": "set var",
+              "type": "print-statement",
+              "values": {
+                "text": "please be patient!"
+              }
+            }
+          ],
+          "post_delay_op": "1000//5000"
+        },
+        {
+          "name": "setup op",
+          "iterations": 1,
+          "actions": [
+            {
+              "name": "set var",
+              "type": "print-statement",
+              "values": {
+                "text": "Come on!"
+              }
+            }
+          ],
+          "post_delay_op": "1000//5000"
+        },
+      {
+        "name": "setup op",
+        "iterations": 2,
+        "actions": [
+          {
+            "name": "set var",
+            "type": "print-statement",
+            "values": {
+              "text": "done!"
+            }
+          }
+        ],
+        "pre_delay_loop": "1000//5000"
+      }
+    ]
+  }
+  

@@ -6,25 +6,28 @@
       "name": "Single simple email",
       "iterations": 1,
       "actions": [
-				{
-					"name": "Send email",
-					"type": "send-email",
-					"values": {
-						"accountProperties": {
+        {
+          "name": "Send email",
+          "type": "send-email",
+          "values": {
+            "accountProperties": {
               "service": "Gmail",
               "user": "emailAddress",
               "pass": "password"
             },
-						"emailProperties": {
-                "from": "You <youremail@gmail.com>",
-                "to": "Your friend <yourfriendsemail@gmail.com>",
-                "subject": "Salvo calling!",
-                "text": "It worked!",
-                "html": "<p>I am HTML, look at me!</p>",
-                "attachments": ["file1.txt", "file2.txt"]
-						}
-					}
-				}
+            "emailProperties": {
+              "from": "You <youremail@gmail.com>",
+              "to": "Your friend <yourfriendsemail@gmail.com>",
+              "subject": "Salvo calling!",
+              "text": "It worked!",
+              "html": "<p>I am HTML, look at me!</p>",
+              "attachments": [
+                ".\\examples\\email\\file1.txt",
+                ".\\examples\\email\\file2.txt"
+              ]
+            }
+          }
+        }
       ]
     }
   ]

@@ -36,6 +36,7 @@
     "xml2js": "^0.4.23"
   },
   "bin": {
-    "salvo": "salvo.js"
+    "salvo": "salvo.js",
+    "salvo-test": "test.js"
   }
 }
